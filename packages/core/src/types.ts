@@ -33,8 +33,13 @@ export interface RunSpec {
   cwd: string;
   /** Harness-native session/thread id from the previous turn, for continuation. */
   harness_session_id?: string;
-  /** Prior turns, for harnesses without native resume (replayed into the prompt). */
-  transcript?: { role: "user" | "assistant"; text: string }[];
+  /**
+   * The previous turn ran on another harness/model (or this harness can't resume): brief the
+   * agent from the session ledger (.jev/MEMORY.md + git history) before the prompt.
+   */
+  handoff?: boolean;
+  /** Commit the turn and append it to the session ledger. Default true. */
+  ledger?: boolean;
   env: Record<string, string>;
   max_turns?: number;
   timeout_ms?: number;
@@ -59,6 +64,14 @@ export type RunEvent =
       cost_usd?: number;
     }
   | { type: "error"; message: string; code?: string }
+  /** The turn was committed to the session ledger. */
+  | {
+      type: "checkpoint";
+      turn: number;
+      commit: string | null;
+      files: { status: string; path: string }[];
+      summary: string;
+    }
   /** Non-fatal harness warning; logged, never fails the run. */
   | { type: "notice"; message: string }
   | { type: "exit"; status: "completed" | "failed" | "cancelled"; exit_code?: number | null };
@@ -101,4 +114,6 @@ export interface RouteDecision {
   reason: string;
   /** Set when Jev failed and we fell back. */
   fallback_reason?: string;
+  /** Continuation turn that changed harness: the agent is briefed from the session ledger. */
+  handoff?: boolean;
 }

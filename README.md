@@ -79,9 +79,30 @@ the chosen option and effort, the estimated cost, the no-router baseline, the to
 their score breakdown, and a one-line reason. Streams follow the Responses event sequence with
 gapless `sequence_number`s and exactly one terminal event.
 
-Continuing a session (`previous_response_id`) keeps its harness and model — harness state lives
-in the session's container — and resumes natively (Claude Code `--resume`, Codex
-`exec resume`, OpenCode `--session`) or by transcript replay (Hermes).
+### Sessions: one task, many models
+
+Continuing with `previous_response_id` re-routes every turn of an `auto` session: Jev sees a
+digest of the earlier turns plus the new request, so "now add tests for it" is judged in context,
+and a small continuity bonus avoids switching agents without reason. Correlated turns can land
+on different harnesses because memory lives in the workspace, not in any one agent:
+
+- **The workspace is a git repo.** Every turn is a commit authored as `<harness>/<model>`, so
+  `git log` / `git show` tell any agent exactly who changed what.
+- **`.jev/MEMORY.md`** holds one entry per turn — request, agent/model/effort, a short result
+  and the files changed; `.jev/turns/NNNN.md` keeps each turn in full.
+- **Same harness as the last turn →** it resumes its own native session (Claude Code
+  `--resume`, Codex `exec resume`, OpenCode `--session`). **Different harness, or one that can't
+  resume (Hermes) →** it starts fresh with a briefing built from the ledger.
+- **`.jev/SKILL.md`** teaches every agent the workflow and is linked from the files each harness
+  reads natively (`AGENTS.md` for Codex/OpenCode/Hermes, `CLAUDE.md` for Claude Code) through a
+  marked block that leaves project instructions intact: read the ledger when picking up work,
+  never rewrite history or edit `.jev/`, and open the final message with a one-line summary —
+  which becomes the ledger entry.
+
+Each response reports its commit, turn number and files in `metadata.checkpoint`, and whether it
+was a handoff in `metadata.route.handoff`. Sessions pinned to a harness keep it (UHP
+`harness_mismatch` otherwise). Tested live: Claude Code wrote a function; Codex, with none of that
+conversation, added its inverse and named the original author and commit from the ledger.
 
 ## How routing works
 

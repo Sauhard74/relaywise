@@ -23,6 +23,10 @@ export interface RouteRequest {
   max_cost_usd?: number;
   /** Caller-pinned choices. A pinned harness narrows the pool; harness+model skips routing. */
   pin?: { harness?: HarnessId; model?: string; effort?: Effort };
+  /** Earlier turns of the session, so Jev judges follow-ups ("now add tests") in context. */
+  context?: string;
+  /** The harness/model that ran the previous turn; staying on it avoids a handoff. */
+  continuity?: { harness: HarnessId; model: string };
 }
 
 export class RouteError extends Error {
@@ -83,7 +87,7 @@ export class Router {
       );
     }
 
-    const { parsed, source, fallback_reason } = await this.classify(req.prompt, pool);
+    const { parsed, source, fallback_reason } = await this.classify(req.prompt, pool, req.context);
 
     const scored = scoreOptions({
       catalog: this.opts.catalog,
@@ -93,6 +97,7 @@ export class Router {
       optionProbabilities: parsed.optionProbabilities,
       priors: this.opts.priors?.stats(parsed.features.task_type),
       effortOverride: pin.effort,
+      continuity: req.continuity,
     });
 
     const affordable =
@@ -129,6 +134,7 @@ export class Router {
   private async classify(
     prompt: string,
     pool: CatalogOption[],
+    context?: string,
   ): Promise<{ parsed: ParsedAnswers; source: RouteSource; fallback_reason?: string }> {
     const heuristic = (reason: string) => ({
       parsed: { features: heuristicFeatures(prompt), optionProbabilities: {} },
@@ -137,7 +143,9 @@ export class Router {
     });
     if (!this.opts.jev) return heuristic("jev not configured (set TYPESAFE_API_KEY)");
 
-    const state = compactState(prompt);
+    // The new request goes last and is kept whole when possible; context is trimmed first.
+    const request = compactState(prompt, 5000);
+    const state = context ? `${compactState(context, Math.max(1000, 7000 - request.length))}\n\nNew request:\n${request}` : request;
     const key = cacheKey(state, pool);
     const hit = this.cache.get(key);
     if (hit) return { parsed: hit, source: "cache" };

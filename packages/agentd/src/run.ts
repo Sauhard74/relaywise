@@ -4,6 +4,7 @@ import { dirname } from "node:path";
 import { createInterface } from "node:readline";
 import { makeRedactor, type HarnessId, type RunEvent, type RunSpec } from "@jev-route/core";
 import type { Driver } from "./driver.ts";
+import { briefing, ensureRepo, recordTurn } from "./memory.ts";
 import { claudeDriver } from "./drivers/claude.ts";
 import { codexDriver } from "./drivers/codex.ts";
 import { hermesDriver } from "./drivers/hermes.ts";
@@ -41,8 +42,15 @@ export async function runHarness(
     return "failed";
   }
 
-  const command = driver.build(spec);
   await mkdir(spec.cwd, { recursive: true });
+  const ledger = spec.ledger !== false;
+  const originalPrompt = spec.prompt;
+  if (ledger) {
+    await ensureRepo(spec.cwd).catch(() => undefined);
+    const brief = spec.handoff ? await briefing(spec.cwd).catch(() => null) : null;
+    if (brief) spec = { ...spec, prompt: `${brief}\n${spec.prompt}` };
+  }
+  const command = driver.build(spec);
   for (const [path, content] of Object.entries(command.files ?? {})) {
     await mkdir(dirname(path), { recursive: true, mode: 0o700 });
     await writeFile(path, content, { mode: 0o600 });
@@ -100,9 +108,15 @@ export async function runHarness(
 
   const parser = driver.parser(spec);
   const lines = createInterface({ input: child.stdout, crlfDelay: Infinity });
+  const texts: string[] = [];
+  let lastError: string | undefined;
   const forward = (events: RunEvent[]) => {
     for (const e of events) {
-      if (e.type === "error") sawError = true;
+      if (e.type === "error") {
+        sawError = true;
+        lastError = e.message;
+      }
+      if (e.type === "text_done") texts.push(e.text);
       out(e);
     }
   };
@@ -155,6 +169,19 @@ export async function runHarness(
     }
   } else status = "completed";
 
+  if (ledger) {
+    const cp = await recordTurn(spec.cwd, {
+      harness: spec.harness,
+      model: spec.model,
+      effort: spec.effort,
+      status,
+      prompt: originalPrompt,
+      finalText: redact(texts.at(-1) ?? ""),
+      fullText: redact(texts.join("\n\n")),
+      error: lastError ? redact(lastError) : undefined,
+    });
+    if (cp) out({ type: "checkpoint", ...cp });
+  }
   out({ type: "exit", status, exit_code: exitCode });
   return status;
 }

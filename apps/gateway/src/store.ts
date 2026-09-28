@@ -25,6 +25,7 @@ export interface ResponseRow {
   route_source: string | null;
   route_json: string | null;
   error_json: string | null;
+  checkpoint_json: string | null;
   metadata_json: string;
   idempotency_key: string | null;
   request_hash: string | null;
@@ -37,9 +38,11 @@ export interface SessionRow {
   id: string;
   harness: HarnessId;
   model: string;
-  harness_session_id: string | null;
+  /** What the client addressed: "auto" sessions are re-routed every turn. */
+  requested_harness: string;
+  /** Native session id per harness (JSON map), for resuming when a harness is reused. */
+  harness_sessions: string;
   sandbox_id: string | null;
-  transcript_json: string;
   busy: number;
   created_at: number;
   last_used_at: number;
@@ -51,9 +54,9 @@ CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
   harness TEXT NOT NULL,
   model TEXT NOT NULL,
-  harness_session_id TEXT,
+  requested_harness TEXT NOT NULL DEFAULT 'auto',
+  harness_sessions TEXT NOT NULL DEFAULT '{}',
   sandbox_id TEXT,
-  transcript_json TEXT NOT NULL DEFAULT '[]',
   busy INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,
   last_used_at INTEGER NOT NULL,
@@ -78,6 +81,7 @@ CREATE TABLE IF NOT EXISTS responses (
   route_source TEXT,
   route_json TEXT,
   error_json TEXT,
+  checkpoint_json TEXT,
   metadata_json TEXT NOT NULL DEFAULT '{}',
   idempotency_key TEXT,
   request_hash TEXT,
@@ -105,13 +109,25 @@ export class Store {
     this.db.pragma("journal_mode = WAL");
     this.db.pragma("foreign_keys = ON");
     this.db.exec(SCHEMA);
+    this.migrate();
   }
 
-  createSession(s: Pick<SessionRow, "id" | "harness" | "model">): SessionRow {
+  /** Additive migrations for databases created by earlier versions. */
+  private migrate(): void {
+    const add = (table: string, column: string, ddl: string) => {
+      const cols = this.db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+      if (!cols.some((c) => c.name === column)) this.db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
+    };
+    add("sessions", "requested_harness", "TEXT NOT NULL DEFAULT 'auto'");
+    add("sessions", "harness_sessions", "TEXT NOT NULL DEFAULT '{}'");
+    add("responses", "checkpoint_json", "TEXT");
+  }
+
+  createSession(s: Pick<SessionRow, "id" | "harness" | "model"> & { requested_harness?: string }): SessionRow {
     const now = Date.now();
     this.db
-      .prepare(`INSERT INTO sessions (id, harness, model, created_at, last_used_at) VALUES (?, ?, ?, ?, ?)`)
-      .run(s.id, s.harness, s.model, now, now);
+      .prepare(`INSERT INTO sessions (id, harness, model, requested_harness, created_at, last_used_at) VALUES (?, ?, ?, ?, ?, ?)`)
+      .run(s.id, s.harness, s.model, s.requested_harness ?? "auto", now, now);
     return this.getSession(s.id)!;
   }
 
@@ -187,6 +203,15 @@ export class Store {
 
   deleteResponse(id: string): boolean {
     return this.db.prepare(`DELETE FROM responses WHERE id = ?`).run(id).changes === 1;
+  }
+
+  /** Earlier turns of a session, oldest first. */
+  sessionTurns(sessionId: string, limit: number): ResponseRow[] {
+    return (
+      this.db
+        .prepare(`SELECT * FROM responses WHERE session_id = ? ORDER BY created_at DESC LIMIT ?`)
+        .all(sessionId, limit) as ResponseRow[]
+    ).reverse();
   }
 
   listResponses(limit: number): ResponseRow[] {

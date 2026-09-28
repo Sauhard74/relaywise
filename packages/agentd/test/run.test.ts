@@ -64,6 +64,77 @@ describe("runHarness (mock harness, real process)", () => {
     expect(events.find((e) => e.type === "text_done")).toMatchObject({ text: expect.stringContaining("-") });
   });
 
+  it("commits each turn to the session ledger and briefs a handed-off agent", async () => {
+    const { execFileSync } = await import("node:child_process");
+    const { readFileSync, existsSync } = await import("node:fs");
+    const cwd = mkdtempSync(join(tmpdir(), "ledger-"));
+
+    const first = await collect(spec({ cwd, prompt: "create the file MOCK_WRITE app.txt", model: "mock-small" }));
+    const cp1 = first.events.find((e) => e.type === "checkpoint");
+    expect(cp1).toMatchObject({ turn: 1, files: [{ status: "A", path: "app.txt" }] });
+    expect((cp1 as { commit: string }).commit).toMatch(/^[0-9a-f]{7,}$/);
+
+    const second = await collect(spec({ cwd, prompt: "now extend it MOCK_WRITE lib.txt", model: "mock-large", handoff: true }));
+    expect(second.events.find((e) => e.type === "text_done")).toMatchObject({ text: expect.stringContaining("(briefed) done: now extend it") });
+    expect(second.events.find((e) => e.type === "checkpoint")).toMatchObject({ turn: 2, files: [{ status: "A", path: "lib.txt" }] });
+
+    const memory = readFileSync(join(cwd, ".jev", "MEMORY.md"), "utf8");
+    expect(memory).toContain("## Turn 1 — mock · mock-small");
+    expect(memory).toContain("## Turn 2 — mock · mock-large");
+    expect(memory).toContain("**Files:** A app.txt");
+    expect(existsSync(join(cwd, ".jev", "turns", "0002.md"))).toBe(true);
+
+    const log = execFileSync("git", ["log", "--format=%an|%s"], { cwd, encoding: "utf8" });
+    expect(log).toContain("mock/mock-large|turn 2");
+    expect(log).toContain("mock/mock-small|turn 1");
+  });
+
+  it("teaches every harness the session workflow without clobbering project instructions", async () => {
+    const { readFileSync, writeFileSync } = await import("node:fs");
+    const cwd = mkdtempSync(join(tmpdir(), "ledger-"));
+    writeFileSync(join(cwd, "AGENTS.md"), "# Project rules\nUse tabs.\n");
+    await collect(spec({ cwd }));
+    await collect(spec({ cwd })); // idempotent: block is replaced, not duplicated
+    const agents = readFileSync(join(cwd, "AGENTS.md"), "utf8");
+    expect(agents).toContain("# Project rules\nUse tabs.");
+    expect(agents.match(/jev-route:start/g)).toHaveLength(1);
+    expect(agents).toContain("Start your final message with one or two sentences");
+    expect(readFileSync(join(cwd, "CLAUDE.md"), "utf8")).toContain("@.jev/SKILL.md");
+    expect(readFileSync(join(cwd, ".jev", "SKILL.md"), "utf8")).toContain("Session ledger");
+  });
+
+  it("summarises a turn from the agent's final message, not its progress chatter", async () => {
+    const { recordTurn } = await import("../src/memory.ts");
+    const cwd = mkdtempSync(join(tmpdir(), "ledger-"));
+    const cp = await recordTurn(cwd, {
+      harness: "codex",
+      model: "m",
+      status: "completed",
+      prompt: "do it",
+      finalText: "Added f_to_c next to c_to_f; nothing left.",
+      fullText: "I'll look around first.\n\nAdded f_to_c next to c_to_f; nothing left.",
+    });
+    expect(cp?.summary).toBe("Added f_to_c next to c_to_f; nothing left.");
+  });
+
+  it("never commits harness internals", async () => {
+    const { execFileSync } = await import("node:child_process");
+    const { mkdirSync, writeFileSync } = await import("node:fs");
+    const cwd = mkdtempSync(join(tmpdir(), "ledger-"));
+    mkdirSync(join(cwd, ".harness"));
+    writeFileSync(join(cwd, ".harness", "secret.json"), "{}");
+    await collect(spec({ cwd }));
+    expect(execFileSync("git", ["ls-files"], { cwd, encoding: "utf8" })).not.toContain(".harness");
+  });
+
+  it("can skip the ledger", async () => {
+    const { existsSync } = await import("node:fs");
+    const cwd = mkdtempSync(join(tmpdir(), "ledger-"));
+    const { events } = await collect(spec({ cwd, ledger: false }));
+    expect(events.some((e) => e.type === "checkpoint")).toBe(false);
+    expect(existsSync(join(cwd, ".git"))).toBe(false);
+  });
+
   it("enforces the timeout", async () => {
     const { status, events } = await collect(spec({ prompt: "MOCK_SLOW", timeout_ms: 300 }));
     expect(status).toBe("failed");

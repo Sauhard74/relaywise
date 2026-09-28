@@ -30,6 +30,9 @@ const JEV_WEIGHT = 0.25;
 const PRIOR_WEIGHT = 0.5;
 const PRIOR_MEAN = 0.8;
 const PRIOR_STRENGTH = 5;
+/** Staying on the previous turn's harness keeps its native context; switching costs a briefing. */
+const SAME_OPTION_BONUS = 0.12;
+const SAME_HARNESS_BONUS = 0.06;
 
 export interface ScoredCandidate extends CandidateScore {
   option: CatalogOption;
@@ -68,6 +71,7 @@ export interface ScoreInput {
   optionProbabilities: Record<string, number>;
   priors?: Map<string, OptionStats>;
   effortOverride?: Effort;
+  continuity?: { harness: string; model: string };
 }
 
 export function scoreOptions(input: ScoreInput): ScoredCandidate[] {
@@ -87,6 +91,9 @@ export function scoreOptions(input: ScoreInput): ScoredCandidate[] {
     let quality = 1 - (gap < 0 ? -gap * UNDER_TIER_PENALTY : gap * OVER_TIER_PENALTY);
     if (option.strengths.includes(features.task_type)) quality += AFFINITY_BONUS;
     if (features.long_horizon && option.tier === 1) quality -= 0.1;
+    if (input.continuity?.harness === option.harness) {
+      quality += input.continuity.model === option.model ? SAME_OPTION_BONUS : SAME_HARNESS_BONUS;
+    }
 
     const p = optionProbabilities[option.id] ?? 0;
     const jev = maxP > 0 ? JEV_WEIGHT * (p / maxP) : 0;

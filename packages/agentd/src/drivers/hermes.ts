@@ -1,12 +1,13 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { RunEvent } from "@jev-route/core";
-import { promptArg, withTranscript, type Driver } from "../driver.ts";
+import { promptArg, type Driver } from "../driver.ts";
 
 /**
  * Hermes Agent one-shot mode: `hermes -z <prompt> --usage-file f`.
  * Hermes has no JSON event stream, so stdout is streamed as text and usage is read from the
- * usage file afterwards. Continuation replays the transcript (no reliable native resume id).
+ * usage file afterwards. One-shot mode can't resume, so continuations are briefed from the
+ * session ledger (see memory.ts).
  */
 export const hermesDriver: Driver = {
   build(spec) {
@@ -15,7 +16,7 @@ export const hermesDriver: Driver = {
       cmd: "hermes",
       args: [
         "-z",
-        promptArg(withTranscript(spec)),
+        promptArg(spec.prompt),
         "--provider",
         "openrouter",
         "--model",

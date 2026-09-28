@@ -12,7 +12,7 @@ import {
   type RouteDecision,
   type RunSpec,
 } from "@jev-route/core";
-import { RouteError, heuristicFeatures, type Router } from "@jev-route/router";
+import { RouteError, heuristicFeatures, type RouteRequest, type Router } from "@jev-route/router";
 import type { Config } from "./config.ts";
 import type { Executor, RunHandle } from "./executors/types.ts";
 import { ResponseBuilder, newId, type ErrorInfo, type OutputItem, type SseEvent, type Usage } from "./responses.ts";
@@ -246,7 +246,11 @@ export class GatewayService {
     return { harness: raw as HarnessId | "auto" };
   }
 
-  private async route(body: CreateBody, harness: HarnessId | "auto"): Promise<RouteDecision> {
+  private async route(
+    body: CreateBody,
+    harness: HarnessId | "auto",
+    session?: Pick<RouteRequest, "context" | "continuity">,
+  ): Promise<RouteDecision> {
     const model = body.model && !BARE_MODELS.has(body.model) ? body.model : (body.metadata?.model as string | undefined);
     const effort = body.reasoning?.effort ?? (body.metadata?.reasoning_effort as Effort | undefined);
     if (effort && !(EFFORTS as readonly string[]).includes(effort)) {
@@ -266,6 +270,7 @@ export class GatewayService {
         prompt: promptOf(body),
         objective,
         max_cost_usd: maxCost,
+        ...session,
         pin: {
           ...(harness !== "auto" ? { harness } : {}),
           ...(model ? { model } : {}),
@@ -300,40 +305,47 @@ export class GatewayService {
     const { harness: requested } = this.requestedHarness(body, headers.harnessId);
     let session: SessionRow;
     let decision: RouteDecision;
-    let transcript: { role: "user" | "assistant"; text: string }[] = [];
 
     if (body.previous_response_id) {
       const prev = this.store.getResponse(body.previous_response_id);
       if (!prev) throw new ApiError(404, "invalid_request_error", "response_not_found", `no response '${body.previous_response_id}'`, "previous_response_id");
       const s = this.store.getSession(prev.session_id);
       if (!s || s.expired) throw new ApiError(404, "invalid_request_error", "session_expired", "the session for this response has expired", "previous_response_id");
-      if (requested !== "auto" && requested !== s.harness) {
-        throw new ApiError(409, "invalid_request_error", "harness_mismatch", `session runs '${s.harness}', not '${requested}'`, "metadata.harness_id");
+      // UHP: a session belongs to the harness the client addressed. "auto" sessions may move
+      // between harnesses turn by turn; the session ledger carries context across the switch.
+      if (requested !== "auto" && requested !== s.requested_harness) {
+        throw new ApiError(409, "invalid_request_error", "harness_mismatch", `session runs '${s.requested_harness}', not '${requested}'`, "metadata.harness_id");
       }
-      session = s;
-      transcript = JSON.parse(s.transcript_json);
-      const effort = body.reasoning?.effort ?? (prev.effort as Effort | null) ?? undefined;
-      decision = {
-        harness: s.harness,
-        model: s.model,
-        effort,
-        option_id: `${s.harness}:${s.model}`,
-        source: "session",
-        objective: body.routing?.objective ?? "balanced",
-        features: heuristicFeatures(promptOf(body)),
-        est_cost_usd: 0,
-        latency_ms: 0,
-        candidates: [],
-        reason: "continuation keeps the session's harness and model",
-      };
       if (!this.store.claimSession(s.id)) {
         const replay = idemKey ? this.store.getByIdempotencyKey(idemKey) : undefined;
         if (replay?.request_hash === requestHash) return this.deliver(replay.id, body);
         throw new ApiError(409, "invalid_request_error", "session_busy", "a turn is already running in this session");
       }
+      session = s;
+      try {
+        decision =
+          s.requested_harness === "auto"
+            ? await this.route(body, "auto", {
+                context: this.sessionContext(s.id),
+                continuity: { harness: s.harness, model: s.model },
+              })
+            : this.stickyDecision(body, s, prev.effort as Effort | null);
+      } catch (err) {
+        this.store.updateSession(s.id, { busy: 0 });
+        throw err;
+      }
+      // Same harness: resume its own session. Different harness (or one that can't resume):
+      // start fresh and brief it from the ledger.
+      const native = this.cfg.catalog.harnesses[decision.harness].native_resume;
+      decision.handoff = decision.harness !== s.harness || !native;
     } else {
       decision = await this.route(body, requested);
-      session = this.store.createSession({ id: newId("sess"), harness: decision.harness, model: decision.model });
+      session = this.store.createSession({
+        id: newId("sess"),
+        harness: decision.harness,
+        model: decision.model,
+        requested_harness: requested,
+      });
       this.store.claimSession(session.id);
     }
 
@@ -354,6 +366,7 @@ export class GatewayService {
       usage_json: null,
       cost_usd: null,
       error_json: null,
+      checkpoint_json: null,
       metadata_json: JSON.stringify({ ...clientMetadata, ...(ignored.length ? { ignored_fields: ignored } : {}) }),
       idempotency_key: idemKey ?? null,
       request_hash: requestHash,
@@ -371,8 +384,40 @@ export class GatewayService {
       throw err;
     }
 
-    this.startRun(row, session, decision, body, transcript);
+    this.startRun(row, session, decision, body);
     return this.deliver(id, body);
+  }
+
+  /** Pinned-harness sessions keep their harness and model; only effort may change. */
+  private stickyDecision(body: CreateBody, s: SessionRow, prevEffort: Effort | null): RouteDecision {
+    return {
+      harness: s.harness,
+      model: s.model,
+      effort: body.reasoning?.effort ?? prevEffort ?? undefined,
+      option_id: `${s.harness}:${s.model}`,
+      source: "session",
+      objective: body.routing?.objective ?? "balanced",
+      features: heuristicFeatures(promptOf(body)),
+      est_cost_usd: 0,
+      latency_ms: 0,
+      candidates: [],
+      reason: `session is pinned to ${s.harness}; keeping its harness and model`,
+    };
+  }
+
+  /** Short digest of recent turns, for routing follow-ups in context. */
+  private sessionContext(sessionId: string): string {
+    const turns = this.store.sessionTurns(sessionId, 5);
+    if (turns.length === 0) return "";
+    const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s).replace(/\s+/g, " ");
+    return [
+      "Earlier turns in this session:",
+      ...turns.map((t, i) => {
+        const cp = t.checkpoint_json ? (JSON.parse(t.checkpoint_json) as { files: { path: string }[] }) : null;
+        const files = cp?.files.length ? ` Files: ${cp.files.slice(0, 8).map((f) => f.path).join(", ")}.` : "";
+        return `${i + 1}. [${t.harness}/${t.model}, ${t.status}] Asked: ${clip(t.input_text, 200)} Result: ${clip(t.output_text || "(none)", 240)}${files}`;
+      }),
+    ].join("\n");
   }
 
   private async deliver(id: string, body: CreateBody): Promise<CreateResult> {
@@ -388,7 +433,6 @@ export class GatewayService {
     session: SessionRow,
     decision: RouteDecision,
     body: CreateBody,
-    transcript: { role: "user" | "assistant"; text: string }[],
   ): void {
     const run: ActiveRun = {
       events: [],
@@ -406,7 +450,7 @@ export class GatewayService {
     );
     this.active.set(row.id, run);
     run.builder.start();
-    run.finished = this.execute(row, session, decision, body, transcript, run).finally(() => {
+    run.finished = this.execute(row, session, decision, body, run).finally(() => {
       setTimeout(() => this.active.delete(row.id), 30_000).unref();
     });
   }
@@ -416,11 +460,11 @@ export class GatewayService {
     session: SessionRow,
     decision: RouteDecision,
     body: CreateBody,
-    transcript: { role: "user" | "assistant"; text: string }[],
     run: ActiveRun,
   ): Promise<void> {
     const started = Date.now();
     let status: ResponseStatus = "failed";
+    const nativeSessions = JSON.parse(session.harness_sessions || "{}") as Record<string, string>;
     try {
       const sandbox = await this.executor.ensureSandbox(session.id, session.sandbox_id);
       if (sandbox.id !== session.sandbox_id) this.store.updateSession(session.id, { sandbox_id: sandbox.id });
@@ -437,8 +481,10 @@ export class GatewayService {
           ...(decision.effort ? { effort: decision.effort } : {}),
           prompt: row.input_text,
           cwd: sandbox.cwd,
-          ...(harness.native_resume && session.harness_session_id ? { harness_session_id: session.harness_session_id } : {}),
-          ...(!harness.native_resume && transcript.length ? { transcript } : {}),
+          ...(!decision.handoff && harness.native_resume && nativeSessions[decision.harness]
+            ? { harness_session_id: nativeSessions[decision.harness] }
+            : {}),
+          ...(decision.handoff ? { handoff: true } : {}),
           env,
           ...(body.max_step ? { max_turns: body.max_step } : {}),
           timeout_ms: body.timeout_seconds ? body.timeout_seconds * 1000 : this.cfg.defaultTimeoutMs,
@@ -465,16 +511,17 @@ export class GatewayService {
       usage_json: b.usage ? JSON.stringify(b.usage) : null,
       cost_usd: cost === null ? null : Math.round(cost * 1e6) / 1e6,
       error_json: status === "failed" && b.error ? JSON.stringify(b.error) : null,
+      checkpoint_json: b.checkpoint ? JSON.stringify(b.checkpoint) : null,
       completed_at: Date.now(),
       duration_ms: Date.now() - started,
     });
-    const nextTranscript = [...transcript, { role: "user" as const, text: row.input_text }];
-    if (b.outputText()) nextTranscript.push({ role: "assistant", text: b.outputText() });
+    if (b.harnessSessionId) nativeSessions[decision.harness] = b.harnessSessionId;
     this.store.updateSession(session.id, {
       busy: 0,
       last_used_at: Date.now(),
-      harness_session_id: b.harnessSessionId ?? session.harness_session_id,
-      transcript_json: JSON.stringify(nextTranscript.slice(-40)),
+      harness: decision.harness,
+      model: decision.model,
+      harness_sessions: JSON.stringify(nativeSessions),
     });
     this.priors?.invalidate();
     b.finish(status);
@@ -512,6 +559,7 @@ export class GatewayService {
         ...(route ? { route } : {}),
         ...(row.cost_usd !== null ? { cost_usd: row.cost_usd } : {}),
         ...(row.duration_ms !== null ? { duration_ms: row.duration_ms } : {}),
+        ...(row.checkpoint_json ? { checkpoint: JSON.parse(row.checkpoint_json) } : {}),
       },
     };
   }
@@ -595,6 +643,8 @@ export class GatewayService {
         difficulty: route?.features.difficulty ?? null,
         route_source: r.route_source,
         route_reason: route?.reason ?? null,
+        handoff: route?.handoff ?? false,
+        turn: r.checkpoint_json ? (JSON.parse(r.checkpoint_json) as { turn: number }).turn : null,
         router_latency_ms: route?.latency_ms ?? null,
         est_cost_usd: r.est_cost_usd,
         cost_usd: r.cost_usd,

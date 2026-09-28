@@ -48,6 +48,7 @@ export class ResponseBuilder {
   harnessSessionId: string | undefined;
   error: ErrorInfo | null = null;
   notices: string[] = [];
+  checkpoint: Extract<RunEvent, { type: "checkpoint" }> | undefined;
   private seq = 0;
   private openMessage: { item: Extract<OutputItem, { type: "message" }>; index: number } | null = null;
   private openReasoning: { item: Extract<OutputItem, { type: "reasoning" }>; index: number } | null = null;
@@ -123,6 +124,9 @@ export class ResponseBuilder {
         break;
       case "notice":
         this.notices.push(ev.message);
+        break;
+      case "checkpoint":
+        this.checkpoint = ev;
         break;
       case "started":
       case "exit":

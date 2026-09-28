@@ -202,7 +202,7 @@ async function refresh() {
       runs.data.map((r) => `<tr><td class="muted">${new Date(r.created_at * 1000).toLocaleTimeString()}</td>
         <td>${esc(r.input_preview)}<div class="muted" style="font-size:12px">${esc(r.task_type || "")}${r.difficulty ? " · " + DIFF[r.difficulty] : ""}</div></td>
         <td>${esc(r.harness_id)}<div class="muted" style="font-size:12px">${esc(r.model)}${r.reasoning_effort ? " · " + esc(r.reasoning_effort) : ""}</div></td>
-        <td><span class="pill ${r.route_source === "jev" || r.route_source === "cache" ? "jev" : ""}">${esc(r.route_source)}</span></td>
+        <td><span class="pill ${r.route_source === "jev" || r.route_source === "cache" ? "jev" : ""}">${esc(r.route_source)}</span>${r.handoff ? `<span class="pill" title="switched agent; briefed from the session ledger">handoff</span>` : ""}${r.turn ? `<div class="muted" style="font-size:12px">turn ${r.turn}</div>` : ""}</td>
         <td class="${esc(r.status)}">${esc(r.status)}</td><td class="num">${usd(r.est_cost_usd)}</td><td class="num">${usd(r.cost_usd)}</td><td class="num">${ms(r.duration_ms)}</td></tr>`).join("");
   } catch (e) {
     $("tiles").innerHTML = `<div class="tile"><div class="k">Error</div><div class="v" style="font-size:15px">${esc(e.message)}</div></div>`;

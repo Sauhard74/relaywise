@@ -34,12 +34,14 @@ export function buildQuestions(options: CatalogOption[]): Record<string, JevQues
   const questions: Record<string, JevQuestion> = {
     task_type: {
       type: "choice",
-      instructions: "What kind of task is the user asking the agent to do?",
+      instructions:
+        "What kind of task is the user asking the agent to do? If earlier turns are shown, classify only the new request, using the earlier turns to understand what it refers to.",
       criteria: TASK_TYPE_CRITERIA,
     },
     difficulty: {
       type: "score",
-      instructions: "How difficult is this task for a capable software agent to complete correctly?",
+      instructions:
+        "How difficult is the new request for a capable software agent to complete correctly, given the work already done?",
       criteria: DIFFICULTY_LEVELS,
     },
     edits_code: {

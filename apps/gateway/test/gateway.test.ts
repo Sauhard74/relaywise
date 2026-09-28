@@ -12,12 +12,15 @@ import { Store, StorePriors } from "../src/store.ts";
 
 const KEY = "test-key-123";
 let jevCalls = 0;
+let lastJevState = "";
 
 /** Stub Jev: "hard" prompts get difficulty 4, everything else trivial. */
 const fakeJevFetch = (async (_url: string, init: RequestInit) => {
   jevCalls++;
   const { state } = JSON.parse(String(init.body)) as { state: string };
-  const hard = /refactor|architecture/i.test(state);
+  lastJevState = state;
+  const request = state.includes("New request:") ? state.slice(state.lastIndexOf("New request:")) : state;
+  const hard = /refactor|architecture/i.test(request);
   return new Response(
     JSON.stringify({
       model: "jev-1.13.0",
@@ -157,7 +160,7 @@ describe("POST /v1/responses", () => {
     const first = await (await post("/v1/responses", { input: "turn one" })).json();
     const second = await (await post("/v1/responses", { input: "turn two", previous_response_id: first.id })).json();
     expect(second.metadata.session_id).toBe(first.metadata.session_id);
-    expect(second.metadata.route.source).toBe("session");
+    expect(second.metadata.route).toMatchObject({ source: "jev", handoff: false }); // auto sessions re-route per turn
     expect(second.output_text).toContain("(resumed)");
     expect(second.previous_response_id).toBe(first.id);
   });
@@ -231,6 +234,44 @@ describe("POST /v1/responses", () => {
       })
     ).json();
     expect(r.output_text).toContain("Be brief.");
+  });
+});
+
+describe("sessions across models (ledger memory)", () => {
+  it("re-routes each turn of an auto session, with earlier turns as context", async () => {
+    const t1 = await (await post("/v1/responses", { input: "create notes MOCK_WRITE notes.md" })).json();
+    expect(t1.model).toBe("mock-small");
+    expect(t1.metadata.checkpoint).toMatchObject({ turn: 1, files: [{ status: "A", path: "notes.md" }] });
+
+    const t2 = await (
+      await post("/v1/responses", { input: "now refactor the architecture around it", previous_response_id: t1.id })
+    ).json();
+    expect(lastJevState).toContain("Earlier turns in this session:");
+    expect(lastJevState).toContain("notes.md");
+    expect(t2.model).toBe("mock-large"); // harder follow-up → stronger model
+    expect(t2.metadata.route).toMatchObject({ source: "jev", handoff: false }); // same harness: native resume
+    expect(t2.output_text).toContain("(resumed)");
+    expect(t2.metadata.checkpoint.turn).toBe(2);
+    expect(t2.metadata.session_id).toBe(t1.metadata.session_id);
+  });
+
+  it("briefs a different harness from the ledger instead of resuming", async () => {
+    const t1 = await (await post("/v1/responses", { input: "first step MOCK_WRITE a.txt" })).json();
+    // Pretend turn 1 ran on another harness, so turn 2 (on mock) is a cross-harness handoff.
+    store.updateSession(t1.metadata.session_id, { harness: "codex", model: "gpt-5.6-terra" });
+    const t2 = await (await post("/v1/responses", { input: "second step", previous_response_id: t1.id })).json();
+    expect(t2.metadata.route.handoff).toBe(true);
+    expect(t2.output_text).toContain("(briefed) done: second step");
+    expect(t2.output_text).not.toContain("(resumed)");
+  });
+
+  it("keeps pinned sessions on their harness", async () => {
+    const t1 = await (await post("/v1/responses", { input: "hi", metadata: { harness_id: "mock" } })).json();
+    const t2 = await (
+      await post("/v1/responses", { input: "refactor the architecture", previous_response_id: t1.id, metadata: { harness_id: "mock" } })
+    ).json();
+    expect(t2.metadata.route.source).toBe("session");
+    expect(t2.model).toBe(t1.model);
   });
 });
 

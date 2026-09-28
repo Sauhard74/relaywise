@@ -50,11 +50,3 @@ export function promptArg(prompt: string): string {
   return prompt.startsWith("-") ? ` ${prompt}` : prompt;
 }
 
-/** Prepends earlier turns for harnesses that can't resume their own sessions. */
-export function withTranscript(spec: RunSpec): string {
-  if (!spec.transcript?.length) return spec.prompt;
-  const history = spec.transcript
-    .map((t) => `<${t.role}>\n${t.text}\n</${t.role}>`)
-    .join("\n");
-  return `Conversation so far:\n${history}\n\nContinue the conversation. New user message:\n${spec.prompt}`;
-}

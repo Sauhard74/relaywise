@@ -151,10 +151,4 @@ describe("hermes one-shot", () => {
     expect(hermesDriver.build(s).args).toEqual(expect.arrayContaining(["-z", "--yolo", "--provider", "openrouter"]));
   });
 
-  it("replays the transcript because hermes one-shot cannot resume", async () => {
-    const { withTranscript } = await import("../src/driver.ts");
-    expect(
-      withTranscript({ ...spec, prompt: "and Spain?", transcript: [{ role: "user", text: "capital of France?" }, { role: "assistant", text: "Paris" }] }),
-    ).toContain("<assistant>\nParis\n</assistant>");
-  });
 });
