@@ -1,0 +1,32 @@
+# docker compose up --build
+# Gateway on http://127.0.0.1:8420 (dashboard at /dashboard). Sessions run in sibling
+# containers started from the agent-runtime image through the host Docker socket.
+services:
+  agent-runtime:
+    # Build-only: provides the image the gateway starts per session.
+    build:
+      context: .
+      dockerfile: docker/agent-runtime/Dockerfile
+    image: jev-route/agent-runtime:latest
+    entrypoint: ["true"]
+    restart: "no"
+
+  gateway:
+    build:
+      context: .
+      dockerfile: docker/gateway/Dockerfile
+    depends_on:
+      agent-runtime:
+        condition: service_completed_successfully
+    env_file: .env
+    environment:
+      JEV_ROUTE_IMAGE: jev-route/agent-runtime:latest
+    ports:
+      - "127.0.0.1:8420:8420"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - jev-route-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  jev-route-data:

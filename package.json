@@ -2,19 +2,22 @@
   "name": "jev-route",
   "private": true,
   "version": "0.1.0",
-  "description": "One API for agent harnesses (Claude Code, Codex, OpenCode, Hermes) with Jev picking the right harness × model × effort per task.",
+  "description": "One API for agent harnesses (Claude Code, Codex, OpenCode, Hermes) with Jev picking the right harness \u00d7 model \u00d7 effort per task.",
   "license": "Apache-2.0",
   "type": "module",
   "packageManager": "pnpm@9.15.4",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "tsx watch apps/gateway/src/main.ts",
     "start": "tsx apps/gateway/src/main.ts",
     "build:agentd": "pnpm --filter @jev-route/agentd build",
-    "build:image": "pnpm build:agentd && docker build -t jev-route/agent-runtime:latest -f docker/agent-runtime/Dockerfile .",
+    "build:image": "docker build -t jev-route/agent-runtime:latest -f docker/agent-runtime/Dockerfile .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "eval:router": "tsx packages/router/eval/run.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

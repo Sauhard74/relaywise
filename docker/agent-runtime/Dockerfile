@@ -1,5 +1,14 @@
 # jev-route agent runtime: one container per session, all harness CLIs + agentd.
-# Build from the repo root:  pnpm build:image
+# Build from the repo root:  pnpm build:image   (or: docker compose build)
+
+FROM node:22-bookworm-slim AS agentd
+WORKDIR /src
+RUN npm install -g esbuild@0.24.2
+COPY packages/core ./packages/core
+COPY packages/agentd ./packages/agentd
+RUN esbuild packages/agentd/src/cli.ts --bundle --platform=node --target=node22 --format=esm \
+      --alias:@jev-route/core=./packages/core/src/index.ts --outfile=/out/agentd.mjs
+
 FROM node:22-bookworm-slim
 
 ARG CLAUDE_CODE_VERSION=2.1.283
@@ -23,7 +32,7 @@ RUN python3 -m venv /opt/hermes \
  && /opt/hermes/bin/pip install --no-cache-dir "hermes-agent==${HERMES_VERSION}" \
  && ln -s /opt/hermes/bin/hermes /usr/local/bin/hermes
 
-COPY packages/agentd/dist/agentd.mjs /opt/agentd/agentd.mjs
+COPY --from=agentd /out/agentd.mjs /opt/agentd/agentd.mjs
 RUN printf '#!/bin/sh\nexec node /opt/agentd/agentd.mjs "$@"\n' > /usr/local/bin/agentd \
  && chmod +x /usr/local/bin/agentd
 

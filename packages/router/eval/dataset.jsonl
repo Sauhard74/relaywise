@@ -1,0 +1,40 @@
+{"prompt":"What does HTTP status 418 mean?","task_type":"quick_answer","difficulty":1,"tier":1}
+{"prompt":"Fix the typo 'recieve' in the README.","task_type":"code_change","difficulty":1,"tier":1}
+{"prompt":"Rename the function getUsr to getUser everywhere in src/api/users.ts.","task_type":"code_change","difficulty":1,"tier":1}
+{"prompt":"List the files in the current directory and tell me which one is largest.","task_type":"ops_shell","difficulty":1,"tier":1}
+{"prompt":"Convert this JSON to YAML: {\"name\": \"app\", \"port\": 8080, \"debug\": true}","task_type":"quick_answer","difficulty":1,"tier":1}
+{"prompt":"Add a .gitignore for a Node.js project.","task_type":"code_change","difficulty":1,"tier":1}
+{"prompt":"What's the difference between let and const in JavaScript?","task_type":"explain","difficulty":1,"tier":1}
+{"prompt":"Install the dependencies and run the test suite, then tell me how many tests pass.","task_type":"ops_shell","difficulty":2,"tier":1}
+{"prompt":"Write a Python script that reads data.csv and prints the average of the 'price' column.","task_type":"data_analysis","difficulty":2,"tier":1}
+{"prompt":"Add a --verbose flag to the CLI in cli.py that enables debug logging.","task_type":"code_change","difficulty":2,"tier":1}
+{"prompt":"Write a unit test for the slugify function in utils/strings.ts covering unicode and empty input.","task_type":"code_change","difficulty":2,"tier":1}
+{"prompt":"Explain what this regex does: ^(?=.*[A-Z])(?=.*\\d).{8,}$","task_type":"explain","difficulty":2,"tier":1}
+{"prompt":"Draft a short, friendly email telling customers about a scheduled maintenance window on Saturday from 2-4am UTC.","task_type":"writing","difficulty":2,"tier":1}
+{"prompt":"Summarize the error log in logs/app.log and tell me the three most common errors.","task_type":"data_analysis","difficulty":2,"tier":1}
+{"prompt":"Set up a GitHub Actions workflow that runs npm test on every pull request.","task_type":"ops_shell","difficulty":2,"tier":1}
+{"prompt":"Review this pull request diff for obvious bugs and style issues: the change adds a caching layer to the user profile endpoint.","task_type":"code_review","difficulty":3,"tier":2}
+{"prompt":"Add pagination (cursor-based) to the /orders endpoint, update the OpenAPI spec and add tests.","task_type":"code_change","difficulty":3,"tier":2}
+{"prompt":"The login test started failing after upgrading express to v5. Figure out why and fix it.","task_type":"debugging","difficulty":3,"tier":2}
+{"prompt":"Implement a rate limiter middleware (token bucket, per API key) for our Hono server with configurable limits.","task_type":"code_change","difficulty":3,"tier":2}
+{"prompt":"Write documentation for the payments module: architecture overview, main flows, and how to add a new provider.","task_type":"writing","difficulty":3,"tier":2}
+{"prompt":"Compare Postgres, SQLite and DynamoDB for our event-sourcing use case and recommend one with reasons.","task_type":"research","difficulty":3,"tier":2}
+{"prompt":"Our React dashboard re-renders the whole table on every keystroke in the filter box. Find the cause and fix it.","task_type":"debugging","difficulty":3,"tier":2}
+{"prompt":"Analyze sales_2025.csv: monthly revenue trend, top 10 products, and any anomalies. Produce a short report with charts.","task_type":"data_analysis","difficulty":3,"tier":2}
+{"prompt":"Convert the Express app in server/ to Hono, keeping all routes and middleware behaviour identical.","task_type":"code_change","difficulty":3,"tier":2}
+{"prompt":"Explain how the authentication flow works in this repository, from the login form to the session cookie.","task_type":"explain","difficulty":3,"tier":2}
+{"prompt":"Write a Dockerfile and docker-compose setup for this app with Postgres and Redis, and document how to run it.","task_type":"ops_shell","difficulty":3,"tier":2}
+{"prompt":"Research the current state of WebGPU support across browsers and summarize what we can rely on for production.","task_type":"research","difficulty":3,"tier":2}
+{"prompt":"There's an intermittent race condition in the job scheduler that causes jobs to run twice under load. Find the root cause across the codebase and fix it with a regression test.","task_type":"debugging","difficulty":4,"tier":3}
+{"prompt":"Migrate the entire codebase from JavaScript to TypeScript with strict mode, fixing all type errors without changing behaviour.","task_type":"code_change","difficulty":5,"tier":3}
+{"prompt":"Redesign the data model to support multi-tenancy (org-level isolation) across all services, write the migration plan and implement it.","task_type":"code_change","difficulty":5,"tier":3}
+{"prompt":"We have a memory leak in the Node worker that only shows up after ~6 hours in production. Investigate heap snapshots and the code, identify the leak and fix it.","task_type":"debugging","difficulty":4,"tier":3}
+{"prompt":"Implement end-to-end encryption for chat messages (key exchange, storage, device sync) in our messaging app.","task_type":"code_change","difficulty":5,"tier":3}
+{"prompt":"Perform a security audit of the authentication and authorization code: find vulnerabilities, rank them by severity and propose fixes.","task_type":"code_review","difficulty":4,"tier":3}
+{"prompt":"Optimize the search service: p99 latency is 2s. Profile it, find the bottlenecks across the query planner and cache, and bring p99 under 300ms.","task_type":"debugging","difficulty":4,"tier":3}
+{"prompt":"Build a distributed rate limiter that works across 12 regions with eventual consistency and less than 1% over-admission, including a design doc and implementation.","task_type":"code_change","difficulty":5,"tier":3}
+{"prompt":"Write a comprehensive technical design document for moving our monolith to an event-driven architecture, including migration phases, risks and rollback plans.","task_type":"writing","difficulty":4,"tier":3}
+{"prompt":"Investigate why our Kubernetes pods get OOMKilled during deploys, across the Helm charts, JVM flags and autoscaler config, and fix it.","task_type":"ops_shell","difficulty":4,"tier":3}
+{"prompt":"Implement a CRDT-based collaborative text editor backend with offline support and conflict-free merges, with property-based tests.","task_type":"code_change","difficulty":5,"tier":3}
+{"prompt":"Do a literature review of recent approaches to LLM routing (2025-2026), compare methods, and propose an evaluation protocol for our system.","task_type":"research","difficulty":4,"tier":3}
+{"prompt":"Refactor the billing engine to support usage-based pricing with proration, credits and invoices, across the API, workers and database schema.","task_type":"code_change","difficulty":5,"tier":3}
