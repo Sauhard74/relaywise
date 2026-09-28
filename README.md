@@ -107,16 +107,19 @@ in the session's container — and resumes natively (Claude Code `--resume`, Cod
 
 `pnpm eval:router` runs the router over 40 labelled tasks (`packages/router/eval/dataset.jsonl`)
 and reports task-type accuracy, difficulty error, under/over-provisioning and estimated spend.
-With `TYPESAFE_API_KEY` set it evaluates Jev; without it, the keyword fallback:
+With `TYPESAFE_API_KEY` set it evaluates Jev; without it, the keyword fallback. Measured
+2026-09-28 with `jev-latest`:
 
-| fallback, objective | tier exact | under-provisioned | over-provisioned | est. saving vs top tier |
-|---|---|---|---|---|
-| balanced | 80.0% | 7.5% | 12.5% | 37% |
-| best | 82.5% | 5.0% | 12.5% | 37% |
-| cheapest | 47.5% | 52.5% (by design) | 0% | 98% |
+| engine, objective | tier exact | under-provisioned | over-provisioned | est. saving vs top tier | router p50 / p95 |
+|---|---|---|---|---|---|
+| **Jev, balanced** | **90–95%** | **2.5–5%** | 2.5–5% | 41% | 336 / 420 ms |
+| Jev, best | 95% | 0% | 5% | 41% | 359 / 448 ms |
+| Jev, cheapest | 72.5% | 27.5% (by design) | 0% | 58% | 349 / 398 ms |
+| fallback, balanced | 80% | 7.5% | 12.5% | 37% | <1 ms |
 
-The fallback rules and these labels were written together, so treat these as an upper bound
-for the fallback; the Jev numbers are the ones that matter. Add your own tasks to the dataset.
+Jev answers vary slightly between runs (the balanced range is two runs); `jev-preview` scored
+no better. The fallback rules and the labels were written together, so treat the fallback row
+as an upper bound. Add your own tasks to the dataset.
 
 ## Isolation and security
 
@@ -175,8 +178,8 @@ uhp-conformance --base-url http://127.0.0.1:8420 --api-key $KEY --class core --h
 
 ## Status and roadmap
 
-MVP. Verified end to end with real Claude Code and Codex runs (streaming, tool calls, native
-resume, cost). OpenCode and Hermes are installed in the image and their drivers are tested
+MVP. Verified end to end with live Jev routing and real Claude Code and Codex runs
+(streaming, tool calls, native resume, cost). OpenCode and Hermes are installed in the image and their drivers are tested
 against their documented output formats, but haven't had a live run yet.
 
 Next: file inputs/outputs (UHP extended class), a cloud sandbox executor (E2B / Vercel

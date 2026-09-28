@@ -186,5 +186,6 @@ function cacheKey(state: string, pool: CatalogOption[]): string {
 function explain(f: RouteFeatures, o: CatalogOption, objective: Objective, source: RouteSource): string {
   const diff = ["trivial", "easy", "moderate", "hard", "very hard"][f.difficulty - 1];
   const via = source === "heuristic" ? "keyword fallback" : source === "cache" ? "cached Jev answer" : "Jev";
-  return `${via} read this as a ${diff} ${f.task_type.replace("_", " ")} task; ${o.id} (tier ${o.tier}) scored best for objective '${objective}'`;
+  const article = /^[aeiou]/.test(diff ?? "") ? "an" : "a";
+  return `${via} read this as ${article} ${diff} ${f.task_type.replace("_", " ")} task; ${o.id} (tier ${o.tier}) scored best for objective '${objective}'`;
 }
