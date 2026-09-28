@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { RunEvent } from "@jev-route/core";
-import { withTranscript, type Driver } from "../driver.ts";
+import { promptArg, withTranscript, type Driver } from "../driver.ts";
 
 /**
  * Hermes Agent one-shot mode: `hermes -z <prompt> --usage-file f`.
@@ -15,7 +15,7 @@ export const hermesDriver: Driver = {
       cmd: "hermes",
       args: [
         "-z",
-        withTranscript(spec),
+        promptArg(withTranscript(spec)),
         "--provider",
         "openrouter",
         "--model",

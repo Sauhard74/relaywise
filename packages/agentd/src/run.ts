@@ -21,6 +21,7 @@ export const DRIVERS: Record<HarnessId, Driver> = {
 /** Only these host variables reach a harness; everything else must come through spec.env. */
 const BASE_ENV_KEYS = ["PATH", "HOME", "USER", "LANG", "LC_ALL", "TMPDIR", "SHELL", "NODE_EXTRA_CA_CERTS", "SSL_CERT_FILE"];
 const DEFAULT_TIMEOUT_MS = 30 * 60_000;
+const MAX_TIMER_MS = 2_147_483_647; // setTimeout fires immediately above this
 const KILL_GRACE_MS = 3_000;
 const STDERR_TAIL = 4_000;
 
@@ -82,7 +83,7 @@ export async function runHarness(
     setTimeout(() => killGroup("SIGKILL"), KILL_GRACE_MS).unref();
   };
 
-  const timer = setTimeout(() => stop("timeout"), spec.timeout_ms ?? DEFAULT_TIMEOUT_MS);
+  const timer = setTimeout(() => stop("timeout"), Math.min(spec.timeout_ms ?? DEFAULT_TIMEOUT_MS, MAX_TIMER_MS));
   timer.unref();
   const onAbort = () => stop("cancelled");
   if (signal?.aborted) onAbort();
@@ -113,9 +114,9 @@ export async function runHarness(
     }
   });
 
-  const exitCode = await new Promise<number | null>((resolve) => {
-    child.on("close", (code) => resolve(code));
-  });
+  const { code: exitCode, signal: exitSignal } = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
+    (resolve) => child.on("close", (code, signal) => resolve({ code, signal })),
+  );
   clearTimeout(timer);
   signal?.removeEventListener("abort", onAbort);
 
@@ -136,6 +137,10 @@ export async function runHarness(
   if (reason === "cancelled") status = "cancelled";
   else if (reason === "timeout") {
     forward([{ type: "error", code: "timeout", message: `run exceeded ${spec.timeout_ms ?? DEFAULT_TIMEOUT_MS} ms` }]);
+    status = "failed";
+  } else if (exitSignal) {
+    // Killed from outside (OOM killer, crash): never report as success.
+    forward([{ type: "error", code: "killed_by_signal", message: `harness was killed by ${exitSignal}` }]);
     status = "failed";
   } else if (spawnError || sawError || (exitCode !== 0 && exitCode !== null)) {
     status = "failed";

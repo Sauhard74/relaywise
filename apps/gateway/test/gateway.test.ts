@@ -273,6 +273,21 @@ describe("routing endpoints, feedback and stats", () => {
     expect(list.data[0]).toHaveProperty("route_source");
   });
 
+  it("reaps idle sessions without touching a busy one", async () => {
+    const idle = store.createSession({ id: "sess_idle", harness: "mock", model: "mock-small" });
+    const busy = store.createSession({ id: "sess_busy", harness: "mock", model: "mock-small" });
+    store.updateSession(idle.id, { sandbox_id: "x1", last_used_at: 0 });
+    store.updateSession(busy.id, { sandbox_id: "x2", last_used_at: 0, busy: 1 });
+    await service.reap(Date.now());
+    expect(store.getSession(idle.id)).toMatchObject({ sandbox_id: null, busy: 0 });
+    expect(store.getSession(busy.id)).toMatchObject({ sandbox_id: "x2", busy: 1 });
+    expect(store.lockForReap(busy.id, Date.now())).toBe(false);
+  });
+
+  it("rejects absurd timeouts instead of overflowing the timer", async () => {
+    expect((await post("/v1/responses", { input: "x", timeout_seconds: 1e9 })).status).toBe(400);
+  });
+
   it("serves the dashboard", async () => {
     const res = await app.request("/dashboard");
     expect(res.status).toBe(200);

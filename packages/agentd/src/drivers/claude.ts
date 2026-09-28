@@ -1,12 +1,12 @@
 import type { RunEvent } from "@jev-route/core";
-import { parseJsonLine, toText, type Driver } from "../driver.ts";
+import { parseJsonLine, promptArg, toText, type Driver } from "../driver.ts";
 
 /** Claude Code headless: `claude -p … --output-format stream-json`. */
 export const claudeDriver: Driver = {
   build(spec) {
     const args = [
       "-p",
-      spec.prompt,
+      promptArg(spec.prompt),
       "--output-format",
       "stream-json",
       "--verbose",

@@ -1,5 +1,5 @@
 import type { RunEvent } from "@jev-route/core";
-import { parseJsonLine, type Driver } from "../driver.ts";
+import { parseJsonLine, promptArg, type Driver } from "../driver.ts";
 
 /** Codex headless: `codex exec --json`. Resume via `codex exec resume <thread_id>`. */
 export const codexDriver: Driver = {
@@ -18,7 +18,7 @@ export const codexDriver: Driver = {
     );
     if (spec.effort) args.push("-c", `model_reasoning_effort="${spec.effort}"`);
     if (resume) args.push(resume);
-    args.push(spec.prompt);
+    args.push(promptArg(spec.prompt));
     return { cmd: "codex", args };
   },
 

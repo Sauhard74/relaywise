@@ -55,7 +55,7 @@ export const CreateBody = z
       .object({ objective: z.enum(OBJECTIVES).optional(), max_cost_usd: z.number().positive().optional() })
       .strict()
       .optional(),
-    timeout_seconds: z.number().positive().optional(),
+    timeout_seconds: z.number().positive().max(86_400).optional(),
     max_step: z.number().int().positive().optional(),
   })
   .passthrough();
@@ -319,6 +319,8 @@ export class GatewayService {
         reason: "continuation keeps the session's harness and model",
       };
       if (!this.store.claimSession(s.id)) {
+        const replay = idemKey ? this.store.getByIdempotencyKey(idemKey) : undefined;
+        if (replay?.request_hash === requestHash) return this.deliver(replay.id, body);
         throw new ApiError(409, "invalid_request_error", "session_busy", "a turn is already running in this session");
       }
     } else {
@@ -627,13 +629,17 @@ export class GatewayService {
   // ---- housekeeping --------------------------------------------------------------------------
 
   async reap(now = Date.now()): Promise<void> {
-    for (const s of this.store.staleSessions(now - this.cfg.sessionRetentionMs)) {
+    const staleBefore = now - this.cfg.sessionRetentionMs;
+    for (const s of this.store.staleSessions(staleBefore)) {
+      if (!this.store.lockForReap(s.id, staleBefore)) continue;
       await this.executor.destroySandbox(s.id, s.sandbox_id);
-      this.store.updateSession(s.id, { expired: 1, sandbox_id: null });
+      this.store.updateSession(s.id, { expired: 1, sandbox_id: null, busy: 0 });
     }
-    for (const s of this.store.idleSessions(now - this.cfg.containerIdleMs)) {
+    const idleBefore = now - this.cfg.containerIdleMs;
+    for (const s of this.store.idleSessions(idleBefore)) {
+      if (!this.store.lockForReap(s.id, idleBefore)) continue;
       await this.executor.stopSandbox(s.sandbox_id!);
-      this.store.updateSession(s.id, { sandbox_id: null });
+      this.store.updateSession(s.id, { sandbox_id: null, busy: 0 });
     }
   }
 

@@ -48,6 +48,10 @@ describe("claude stream-json", () => {
     expect(events.some((e) => e.type === "error" && e.code === "error_max_turns")).toBe(true);
   });
 
+  it("guards prompts that start with a dash", () => {
+    expect(claudeDriver.build({ ...spec, prompt: "--- a/file.ts" }).args[1]).toBe(" --- a/file.ts");
+  });
+
   it("builds resume + effort flags", () => {
     const cmd = claudeDriver.build({ ...spec, effort: "high", harness_session_id: "abc" });
     expect(cmd.args).toEqual(expect.arrayContaining(["--effort", "high", "--resume", "abc", "--model", "m"]));

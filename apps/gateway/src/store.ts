@@ -143,6 +143,15 @@ export class Store {
     return this.db.prepare(`SELECT * FROM sessions WHERE busy = 0 AND expired = 0 AND last_used_at < ?`).all(before) as SessionRow[];
   }
 
+  /**
+   * Locks an idle session for reaping (busy=1) only if it is still idle, so a turn that
+   * claimed it in the meantime can't have its sandbox removed underneath it.
+   */
+  lockForReap(id: string, idleBefore: number): boolean {
+    return this.db.prepare(`UPDATE sessions SET busy = 1 WHERE id = ? AND busy = 0 AND last_used_at < ?`).run(id, idleBefore)
+      .changes === 1;
+  }
+
   /** Clears busy flags left behind by a crash. */
   resetBusy(): void {
     this.db.prepare(`UPDATE sessions SET busy = 0 WHERE busy = 1`).run();
@@ -270,6 +279,7 @@ export function routeColumns(d: RouteDecision | undefined) {
     option_id: d?.option_id ?? null,
     route_source: d?.source ?? null,
     route_json: d ? JSON.stringify(d) : null,
-    est_cost_usd: d?.est_cost_usd ?? null,
+    // Continuations aren't routed, so they carry no estimate.
+    est_cost_usd: d && d.source !== "session" ? d.est_cost_usd : null,
   };
 }

@@ -52,6 +52,18 @@ describe("runHarness (mock harness, real process)", () => {
     expect(events.at(-1)).toMatchObject({ type: "exit", status: "cancelled" });
   });
 
+  it("never reports a process killed from outside as completed", async () => {
+    const { status, events } = await collect(spec({ prompt: "MOCK_KILL" }));
+    expect(status).toBe("failed");
+    expect(events.some((e) => e.type === "error" && e.code === "killed_by_signal")).toBe(true);
+  });
+
+  it("keeps prompts that start with a dash positional", async () => {
+    const { status, events } = await collect(spec({ prompt: "- fix the bug" }));
+    expect(status).toBe("completed");
+    expect(events.find((e) => e.type === "text_done")).toMatchObject({ text: expect.stringContaining("-") });
+  });
+
   it("enforces the timeout", async () => {
     const { status, events } = await collect(spec({ prompt: "MOCK_SLOW", timeout_ms: 300 }));
     expect(status).toBe("failed");

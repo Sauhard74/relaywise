@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import type { RunEvent } from "@jev-route/core";
-import { parseJsonLine, toText, type Driver } from "../driver.ts";
+import { parseJsonLine, promptArg, toText, type Driver } from "../driver.ts";
 
 /** OpenCode headless: `opencode run --format json`. Permissions are pre-approved via config. */
 export const opencodeDriver: Driver = {
@@ -9,7 +9,7 @@ export const opencodeDriver: Driver = {
     const args = ["run", "--format", "json", "--pure", "--auto", "-m", spec.model, "--dir", spec.cwd];
     if (spec.effort) args.push("--variant", spec.effort);
     if (spec.harness_session_id) args.push("--session", spec.harness_session_id);
-    args.push(spec.prompt);
+    args.push(promptArg(spec.prompt));
     return {
       cmd: "opencode",
       args,

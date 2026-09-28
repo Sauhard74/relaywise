@@ -42,6 +42,14 @@ export function toText(content: unknown): string {
   return JSON.stringify(content);
 }
 
+/**
+ * CLI parsers (clap, commander, yargs, argparse) treat a leading "-" as an option. A leading
+ * space keeps a prompt like "- fix the bug" positional without changing its meaning.
+ */
+export function promptArg(prompt: string): string {
+  return prompt.startsWith("-") ? ` ${prompt}` : prompt;
+}
+
 /** Prepends earlier turns for harnesses that can't resume their own sessions. */
 export function withTranscript(spec: RunSpec): string {
   if (!spec.transcript?.length) return spec.prompt;

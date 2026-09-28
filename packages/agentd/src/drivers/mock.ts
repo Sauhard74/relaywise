@@ -5,6 +5,7 @@ import type { Driver } from "../driver.ts";
  * Runs a tiny node script so it exercises the real spawn/parse/cancel path.
  *   MOCK_FAIL in the prompt → harness error + non-zero exit
  *   MOCK_SLOW in the prompt → sleeps 30s between events (for cancel tests)
+ *   MOCK_KILL in the prompt → SIGKILLs itself mid-run (like the OOM killer)
  *   MOCK_PACE_MS (host env) → delay between streamed words, default 120
  */
 const SCRIPT = String.raw`
@@ -16,6 +17,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   emit({ kind: "session", id: spec.harness_session_id || "mock-" + spec.run_id });
   emit({ kind: "tool", id: "call_1", name: "shell", args: { command: "ls" }, out: "README.md" });
   if (slow) await sleep(30000);
+  if (spec.prompt.includes("MOCK_KILL")) process.kill(process.pid, "SIGKILL");
   if (spec.prompt.includes("MOCK_FAIL")) {
     emit({ kind: "error", message: "mock harness failure" });
     process.exit(3);
