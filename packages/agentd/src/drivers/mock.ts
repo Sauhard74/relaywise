@@ -5,6 +5,7 @@ import type { Driver } from "../driver.ts";
  * Runs a tiny node script so it exercises the real spawn/parse/cancel path.
  *   MOCK_FAIL in the prompt → harness error + non-zero exit
  *   MOCK_SLOW in the prompt → sleeps 30s between events (for cancel tests)
+ *   MOCK_PACE_MS (host env) → delay between streamed words, default 120
  */
 const SCRIPT = String.raw`
 const spec = JSON.parse(process.env.MOCK_SPEC);
@@ -20,7 +21,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     process.exit(3);
   }
   const reply = "[" + spec.model + (spec.effort ? "/" + spec.effort : "") + "] " + (spec.harness_session_id ? "(resumed) " : "") + "done: " + spec.prompt.slice(0, 80);
-  for (const word of reply.split(/(?<= )/)) emit({ kind: "delta", text: word });
+  // Paced like a real model so clients (and conformance S-09) can observe progressive streaming.
+  for (const word of reply.split(/(?<= )/)) {
+    emit({ kind: "delta", text: word });
+    await sleep(Number(process.env.MOCK_PACE_MS));
+  }
   emit({ kind: "done", text: reply });
   emit({ kind: "usage", input: 1200 + spec.prompt.length, output: 80 });
 })();
@@ -32,6 +37,7 @@ export const mockDriver: Driver = {
       cmd: process.execPath,
       args: ["-e", SCRIPT],
       env: {
+        MOCK_PACE_MS: process.env.MOCK_PACE_MS ?? "120",
         MOCK_SPEC: JSON.stringify({
           run_id: spec.run_id,
           prompt: spec.prompt,

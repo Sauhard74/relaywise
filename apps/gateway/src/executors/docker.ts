@@ -99,7 +99,7 @@ export class DockerExecutor implements Executor {
 
     const done = new Promise<RunStatus>((resolve) => {
       child.on("error", (err) => {
-        onEvent({ type: "error", code: "sandbox_unavailable", message: err.message });
+        onEvent({ type: "error", code: "harness_unavailable", message: err.message });
         onEvent({ type: "exit", status: "failed", exit_code: null });
         resolve("failed");
       });
@@ -107,7 +107,7 @@ export class DockerExecutor implements Executor {
         if (exitStatus) return resolve(exitStatus);
         onEvent({
           type: "error",
-          code: "sandbox_unavailable",
+          code: "harness_unavailable",
           message: `docker exec ended (code ${code}) without a result${stderr.trim() ? `: ${stderr.trim()}` : ""}`,
         });
         onEvent({ type: "exit", status: "failed", exit_code: code });

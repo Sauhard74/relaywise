@@ -42,7 +42,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   for (const k of PROVIDER_ENV_KEYS) if (env[k]) providerEnv[k] = env[k]!;
 
   return {
-    port: num("PORT", 8787),
+    port: num("PORT", 8420),
     host: env.HOST ?? "127.0.0.1",
     apiKeys: (env.JEV_ROUTE_API_KEYS ?? "").split(",").map((s) => s.trim()).filter(Boolean),
     executor: env.JEV_ROUTE_EXECUTOR === "local" ? "local" : "docker",

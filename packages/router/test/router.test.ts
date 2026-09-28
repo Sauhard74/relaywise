@@ -208,6 +208,14 @@ describe("heuristicFeatures", () => {
     expect(f.task_type).toBe("debugging");
     expect(f.difficulty).toBeGreaterThanOrEqual(3);
   });
+  it("treats file-creating requests as code changes", () => {
+    const f = heuristicFeatures("Create a file hello.py that prints the first 10 Fibonacci numbers and run it.");
+    expect(f.task_type).toBe("code_change");
+    expect(f.edits_code).toBe(true);
+  });
+  it("stacks several hard signals", () => {
+    expect(heuristicFeatures("Intermittent race condition across the codebase in the scheduler; fix it.").difficulty).toBeGreaterThanOrEqual(4);
+  });
   it("treats short questions as quick answers", () => {
     expect(heuristicFeatures("capital of France?").task_type).toBe("quick_answer");
   });

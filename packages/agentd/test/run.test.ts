@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 import type { RunEvent, RunSpec } from "@jev-route/core";
 import { runHarness } from "../src/run.ts";
 
+process.env.MOCK_PACE_MS = "0";
+
 function spec(over: Partial<RunSpec> = {}): RunSpec {
   return {
     run_id: `t${Math.random().toString(36).slice(2)}`,

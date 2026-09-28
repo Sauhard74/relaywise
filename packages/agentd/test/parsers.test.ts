@@ -113,3 +113,35 @@ describe("opencode run --format json", () => {
     ]);
   });
 });
+
+describe("hermes one-shot", () => {
+  it("streams stdout and reads the usage report", async () => {
+    const { mkdtempSync, mkdirSync, writeFileSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { hermesDriver } = await import("../src/drivers/hermes.ts");
+    const cwd = mkdtempSync(join(tmpdir(), "hermes-"));
+    mkdirSync(join(cwd, ".harness"));
+    const s = { ...spec, harness: "hermes" as const, cwd, run_id: "h1" };
+    writeFileSync(
+      join(cwd, ".harness", "hermes-usage-h1.json"),
+      JSON.stringify({ estimated_cost_usd: 0.002, input_tokens: 900, output_tokens: 40, cache_read_tokens: 100, cache_write_tokens: 0, reasoning_tokens: 10, failed: false }),
+    );
+    const p = hermesDriver.parser(s);
+    const events = [...p.line("Paris is the capital."), ...p.line("Done."), ...(await p.end(0))];
+    expect(events).toEqual([
+      { type: "text_delta", text: "Paris is the capital.\n" },
+      { type: "text_delta", text: "Done.\n" },
+      { type: "text_done", text: "Paris is the capital.\nDone." },
+      { type: "usage", input_tokens: 900, output_tokens: 50, cache_read_tokens: 100, cost_usd: 0.002 },
+    ]);
+    expect(hermesDriver.build(s).args).toEqual(expect.arrayContaining(["-z", "--yolo", "--provider", "openrouter"]));
+  });
+
+  it("replays the transcript because hermes one-shot cannot resume", async () => {
+    const { withTranscript } = await import("../src/driver.ts");
+    expect(
+      withTranscript({ ...spec, prompt: "and Spain?", transcript: [{ role: "user", text: "capital of France?" }, { role: "assistant", text: "Paris" }] }),
+    ).toContain("<assistant>\nParis\n</assistant>");
+  });
+});

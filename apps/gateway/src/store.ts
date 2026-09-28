@@ -148,7 +148,7 @@ export class Store {
     this.db.prepare(`UPDATE sessions SET busy = 0 WHERE busy = 1`).run();
     this.db
       .prepare(
-        `UPDATE responses SET status = 'failed', error_json = '{"type":"server_error","code":"gateway_restarted","message":"gateway restarted during the run"}', completed_at = ? WHERE status IN ('queued', 'in_progress')`,
+        `UPDATE responses SET status = 'failed', error_json = '{"type":"server_error","code":"jevroute.gateway_restarted","message":"gateway restarted during the run"}', completed_at = ? WHERE status IN ('queued', 'in_progress')`,
       )
       .run(Date.now());
   }

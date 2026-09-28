@@ -38,6 +38,7 @@ let service: GatewayService;
 let store: Store;
 
 beforeAll(async () => {
+  process.env.MOCK_PACE_MS = "0";
   const cfg = loadConfig({
     JEV_ROUTE_EXECUTOR: "local",
     JEV_ROUTE_ENABLE_MOCK: "1",
@@ -85,21 +86,30 @@ describe("discovery and auth", () => {
     const res = await app.request("/v1/uhp");
     expect(res.status).toBe(200);
     expect(res.headers.get("uhp-version")).toBe("2026-09-12");
-    expect((await res.json()).capabilities.routing).toContain("auto");
+    const d = await res.json();
+    expect(d).toMatchObject({ object: "uhp.discovery", protocol: "uhp", default_version: "2026-09-12", conformance_class: "core" });
+    expect(d.capabilities).toMatchObject({ streaming: true, cancellation: true, "jevroute.auto_routing": true });
   });
 
   it("rejects missing keys with the error envelope", async () => {
     const res = await app.request("/v1/harnesses");
     expect(res.status).toBe(401);
     const body = await res.json();
-    expect(body.error).toMatchObject({ type: "authentication_error", code: "invalid_api_key" });
+    expect(body.error).toMatchObject({ type: "authentication_error", code: "missing_credential" });
+    const bad = await app.request("/v1/harnesses", { headers: { Authorization: "Bearer nope" } });
+    expect((await bad.json()).error.code).toBe("invalid_credential");
     expect(body.detail).toBeTruthy();
   });
 
   it("lists auto plus harnesses with availability", async () => {
     const body = await (await get("/v1/harnesses")).json();
-    expect(body.data[0]).toMatchObject({ id: "auto", available: true, routing: { engine: "jev" } });
-    expect(body.data.find((h: any) => h.id === "mock")).toMatchObject({ available: true });
+    expect(body.harnesses[0]).toMatchObject({ id: "chrn_auto", base: "auto", available: true, routing: { engine: "jev" } });
+    expect(body.harnesses.find((h: any) => h.base === "mock")).toMatchObject({ id: "chrn_mock", available: true });
+    expect((await (await get("/v1/harnesses/mock")).json()).id).toBe("chrn_mock");
+    const models = await (await get("/v1/models")).json();
+    expect(models.backends.mock).toMatchObject({ default: "mock-small" });
+    expect(models.backends.auto.models[0]).toMatchObject({ id: "auto", available: true });
+    expect((await (await get("/v1/harnesses/chrn_mock/models")).json()).models).toHaveLength(2);
   });
 
   it("rejects unsupported protocol versions", async () => {
@@ -191,7 +201,7 @@ describe("POST /v1/responses", () => {
     const res = await post("/v1/responses", { input: "anything", routing: { max_cost_usd: 1e-9 } });
     expect(res.status).toBe(422);
     const body = await res.json();
-    expect(body.error.code).toBe("budget_exceeded");
+    expect(body.error.code).toBe("jevroute.budget_exceeded");
     expect(body.error.detail.cheapest_option).toBeTruthy();
   });
 
@@ -208,7 +218,7 @@ describe("POST /v1/responses", () => {
   });
 
   it("accepts HarnessRouter cloud-style paths", async () => {
-    const r = await (await post("/mock/v1/responses", { input: "path style" })).json();
+    const r = await (await post("/chrn_mock/v1/responses", { input: "path style" })).json();
     expect(r.metadata.harness_id).toBe("mock");
     expect(r.metadata.route.source).toBe("jev");
   });

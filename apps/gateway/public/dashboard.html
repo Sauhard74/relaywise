@@ -193,9 +193,9 @@ async function refresh() {
     $("mix").innerHTML = byOpt.length ? byOpt.map((o) => `<tr><td style="width:55%">${esc(o.option_id || o.harness + ":" + o.model)}</td><td style="width:35%"><div class="bar" style="width:${(100 * o.runs) / max}%"></div></td><td class="num">${o.runs}</td></tr>`).join("") : `<tr><td class="muted">No runs yet.</td></tr>`;
 
     const sel = $("harness"); const cur = sel.value;
-    sel.innerHTML = harnesses.data.map((h) => `<option value="${esc(h.id)}" ${h.available ? "" : "disabled"}>${h.id === "auto" ? "auto (Jev picks)" : esc(h.name)}${h.available ? "" : " — unavailable"}</option>`).join("");
+    sel.innerHTML = harnesses.harnesses.map((h) => `<option value="${esc(h.base)}" ${h.available ? "" : "disabled"}>${h.base === "auto" ? "auto (Jev picks)" : esc(h.name)}${h.available ? "" : " — unavailable"}</option>`).join("");
     sel.value = cur || "auto";
-    $("harnesses").innerHTML = harnesses.data.filter((h) => h.id !== "auto").map((h) =>
+    $("harnesses").innerHTML = harnesses.harnesses.filter((h) => h.base !== "auto").map((h) =>
       `<div style="margin-bottom:6px"><b>${esc(h.name)}</b> <span class="${h.available ? "completed" : "failed"}">${h.available ? "ready" : "unavailable"}</span>${h.unavailable_reasons ? `<div class="muted" style="font-size:12px">${esc(h.unavailable_reasons.join("; "))}</div>` : ""}</div>`).join("");
 
     $("runs").innerHTML = `<tr><th>when</th><th>task</th><th>routed to</th><th>via</th><th>status</th><th class="num">est.</th><th class="num">cost</th><th class="num">time</th></tr>` +

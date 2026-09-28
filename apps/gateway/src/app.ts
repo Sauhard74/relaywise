@@ -21,38 +21,9 @@ export function createApp(service: GatewayService, apiKeys: string[]): Hono {
   app.onError((err, c) => {
     if (err instanceof ApiError) return errorResponse(c, err);
     console.error(err);
-    return errorResponse(c, new ApiError(500, "server_error", "internal_error", "internal server error"));
+    return errorResponse(c, new ApiError(500, "server_error", "jevroute.internal_error", "internal server error"));
   });
-  app.notFound((c) => errorResponse(c, new ApiError(404, "invalid_request_error", "not_found", `no route ${c.req.method} ${c.req.path}`)));
-
-  // ---- public ---------------------------------------------------------------------------------
-  app.get("/", (c) => c.redirect("/dashboard"));
-  app.get("/healthz", (c) => c.json({ ok: true }));
-  app.get("/dashboard", (c) => c.html(DASHBOARD_HTML));
-  app.get("/v1/uhp", (c) =>
-    c.json({
-      object: "uhp",
-      protocol_versions: [UHP_VERSION],
-      conformance_class: "core",
-      implementation: { name: "jev-route", version: "0.1.0" },
-      capabilities: { streaming: true, cancel: true, sessions: true, idempotency: true, routing: ["auto"], files: false },
-    }),
-  );
-
-  // ---- auth -----------------------------------------------------------------------------------
-  const requireAuth = async (c: Context, next: () => Promise<void>) => {
-    if (keyDigests.length === 0) return next();
-    const header = c.req.header("authorization") ?? "";
-    const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
-    const digest = sha256(token);
-    if (!token || !keyDigests.some((k) => timingSafeEqual(k, digest))) {
-      throw new ApiError(401, "authentication_error", "invalid_api_key", "missing or invalid API key");
-    }
-    return next();
-  };
-  app.use("/v1/*", async (c, next) => (c.req.path === "/v1/uhp" ? next() : requireAuth(c, next)));
-  app.use("/api/*", requireAuth);
-  app.use("/:harness/v1/*", requireAuth);
+  app.notFound((c) => errorResponse(c, new ApiError(404, "invalid_request_error", "jevroute.not_found", `no route ${c.req.method} ${c.req.path}`)));
 
   // ---- version negotiation ---------------------------------------------------------------------
   app.use("*", async (c, next) => {
@@ -65,14 +36,58 @@ export function createApp(service: GatewayService, apiKeys: string[]): Hono {
     return next();
   });
 
+  // ---- public ---------------------------------------------------------------------------------
+  app.get("/", (c) => c.redirect("/dashboard"));
+  app.get("/healthz", (c) => c.json({ ok: true }));
+  app.get("/dashboard", (c) => c.html(DASHBOARD_HTML));
+  app.get("/v1/uhp", (c) =>
+    c.json({
+      object: "uhp.discovery",
+      protocol: "uhp",
+      versions: [UHP_VERSION],
+      default_version: UHP_VERSION,
+      conformance_class: "core",
+      implementation: { name: "jev-route", version: "0.1.0" },
+      capabilities: {
+        streaming: true,
+        sessions: true,
+        cancellation: true,
+        idempotency: true,
+        files_input: false,
+        files_output: false,
+        session_listing: false,
+        harness_management: false,
+        session_sharing: false,
+        plugins: false,
+        "jevroute.auto_routing": true,
+      },
+    }),
+  );
+
+  // ---- auth -----------------------------------------------------------------------------------
+  const requireAuth = async (c: Context, next: () => Promise<void>) => {
+    if (keyDigests.length === 0) return next();
+    const header = c.req.header("authorization") ?? "";
+    const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+    const digest = sha256(token);
+    if (!token) throw new ApiError(401, "authentication_error", "missing_credential", "missing API key");
+    if (!keyDigests.some((k) => timingSafeEqual(k, digest))) {
+      throw new ApiError(401, "authentication_error", "invalid_credential", "invalid API key");
+    }
+    return next();
+  };
+  app.use("/v1/*", async (c, next) => (c.req.path === "/v1/uhp" ? next() : requireAuth(c, next)));
+  app.use("/api/*", requireAuth);
+  app.use("/:harness/v1/*", requireAuth);
+
   // ---- discovery ------------------------------------------------------------------------------
   app.get("/v1/harnesses", (c) => c.json(service.listHarnesses()));
   app.get("/v1/harnesses/:id", (c) => {
-    const h = service.listHarnesses().data.find((x) => x.id === c.req.param("id"));
+    const h = service.getHarness(c.req.param("id"));
     if (!h) throw new ApiError(404, "invalid_request_error", "harness_not_found", `unknown harness '${c.req.param("id")}'`);
     return c.json(h);
   });
-  app.get("/v1/harnesses/:id/models", (c) => c.json(service.listModels(c.req.param("id"))));
+  app.get("/v1/harnesses/:id/models", (c) => c.json(service.harnessModels(c.req.param("id"))));
   app.get("/v1/models", (c) => c.json(service.listModels()));
 
   // ---- routing --------------------------------------------------------------------------------
@@ -158,7 +173,7 @@ async function jsonBody(c: Context): Promise<unknown> {
   try {
     return await c.req.json();
   } catch {
-    throw new ApiError(400, "invalid_request_error", "invalid_json", "request body must be valid JSON");
+    throw new ApiError(400, "invalid_request_error", "invalid_input", "request body must be valid JSON");
   }
 }
 

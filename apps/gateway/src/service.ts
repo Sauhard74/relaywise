@@ -117,7 +117,7 @@ export class GatewayService {
   harnessStatus(id: HarnessId): { available: boolean; missing: string[] } {
     const missing: string[] = [];
     if (id === "mock" && !this.cfg.enableMock) missing.push("disabled (set JEV_ROUTE_ENABLE_MOCK=1)");
-    else if (!this.installed?.[id]) missing.push("not installed in sandbox image");
+    else if (!this.installed?.[id]) missing.push(this.executor.kind === "docker" ? "CLI missing from sandbox image" : "CLI not installed on this host");
     const auth = this.cfg.catalog.harnesses[id].auth_env;
     // Local mode may use the host's CLI logins, so only Docker requires forwarded keys.
     if (this.executor.kind === "docker" && auth.length > 0 && !auth.some((k) => this.cfg.providerEnv[k])) {
@@ -128,52 +128,97 @@ export class GatewayService {
 
   isOptionAvailable = (o: CatalogOption): boolean => this.harnessStatus(o.harness).available;
 
+  /**
+   * UHP harness objects: `id` is `chrn_<base>`; `base` is the harness family. Plain base ids
+   * ("codex", "auto") are accepted everywhere a harness id is.
+   */
   listHarnesses() {
-    const data = HARNESS_IDS.filter((id) => id !== "mock" || this.cfg.enableMock).map((id) => {
-      const h = this.cfg.catalog.harnesses[id];
-      const status = this.harnessStatus(id);
-      return {
-        id,
+    const harnesses = [
+      {
+        id: "chrn_auto",
         object: "harness",
-        name: h.label,
-        available: status.available,
-        ...(status.missing.length ? { unavailable_reasons: status.missing } : {}),
-        supports_effort: h.efforts.length > 0,
-        native_resume: h.native_resume,
-        models: this.cfg.catalog.options.filter((o) => o.harness === id).map((o) => o.model),
-      };
-    });
-    return {
-      object: "list",
-      data: [
-        {
-          id: "auto",
+        name: "Auto (routed by Jev)",
+        base: "auto",
+        baseLabel: "Auto",
+        defaultModel: "auto",
+        available: this.visibleHarnesses().some((id) => this.harnessStatus(id).available),
+        routing: { engine: this.cfg.typesafeApiKey ? "jev" : "heuristic", model: this.cfg.jevModel },
+      },
+      ...this.visibleHarnesses().map((id) => {
+        const h = this.cfg.catalog.harnesses[id];
+        const status = this.harnessStatus(id);
+        const models = this.cfg.catalog.options.filter((o) => o.harness === id);
+        return {
+          id: `chrn_${id}`,
           object: "harness",
-          name: "Auto (routed by Jev)",
-          available: data.some((h) => h.available),
-          routing: { engine: this.cfg.typesafeApiKey ? "jev" : "heuristic", model: this.cfg.jevModel },
-        },
-        ...data,
-      ],
+          name: h.label,
+          base: id,
+          baseLabel: h.label,
+          ...(models[0] ? { defaultModel: models[0].model } : {}),
+          available: status.available,
+          ...(status.missing.length ? { unavailable_reasons: status.missing } : {}),
+          supports_effort: h.efforts.length > 0,
+          native_resume: h.native_resume,
+        };
+      }),
+    ];
+    return { object: "list", harnesses, data: harnesses };
+  }
+
+  getHarness(id: string) {
+    const base = normalizeHarnessId(id);
+    const h = this.listHarnesses().harnesses.find((x) => x.base === base);
+    if (!h) throw new ApiError(404, "invalid_request_error", "harness_not_found", `unknown harness '${id}'`);
+    return h;
+  }
+
+  /** UHP ModelCatalog: models grouped by harness base. */
+  listModels() {
+    const backends: Record<string, { default: string; models: { id: string; available: boolean }[] }> = {
+      auto: { default: "auto", models: [this.autoModel()] },
+    };
+    for (const id of this.visibleHarnesses()) {
+      const models = this.cfg.catalog.options.filter((o) => o.harness === id).map((o) => this.modelEntry(o));
+      if (models.length) backends[id] = { default: models[0]!.id, models };
+    }
+    const data = Object.values(backends).flatMap((b) => b.models);
+    return { object: "list", backends, data };
+  }
+
+  harnessModels(id: string) {
+    const base = this.getHarness(id).base;
+    if (base === "auto") {
+      return { harness_id: `chrn_auto`, backend: "auto", default: "auto", models: [this.autoModel()] };
+    }
+    const models = this.cfg.catalog.options.filter((o) => o.harness === base).map((o) => this.modelEntry(o));
+    return { harness_id: `chrn_${base}`, backend: base, default: models[0]?.id ?? "", models };
+  }
+
+  private modelEntry(o: CatalogOption) {
+    return {
+      id: o.model,
+      label: o.model,
+      backend: o.harness,
+      available: this.isOptionAvailable(o),
+      option_id: o.id,
+      tier: o.tier,
+      pricing: o.price,
+      strengths: o.strengths,
     };
   }
 
-  listModels(harness?: string) {
+  private autoModel() {
     return {
-      object: "list",
-      data: this.cfg.catalog.options
-        .filter((o) => (o.harness !== "mock" || this.cfg.enableMock) && (!harness || o.harness === harness))
-        .map((o) => ({
-          id: o.model,
-          object: "model",
-          harness_id: o.harness,
-          option_id: o.id,
-          tier: o.tier,
-          pricing: o.price,
-          strengths: o.strengths,
-          available: this.isOptionAvailable(o),
-        })),
+      id: "auto",
+      label: "Routed by Jev",
+      backend: "auto",
+      available: this.cfg.catalog.options.some((o) => this.isOptionAvailable(o)),
+      default: true,
     };
+  }
+
+  private visibleHarnesses(): HarnessId[] {
+    return HARNESS_IDS.filter((id) => id !== "mock" || this.cfg.enableMock);
   }
 
   // ---- routing -------------------------------------------------------------------------------
@@ -185,9 +230,10 @@ export class GatewayService {
   }
 
   private requestedHarness(body: CreateBody, headerHarness: string | undefined): { harness: HarnessId | "auto" } {
-    const raw = (body.metadata?.harness_id as string | undefined) ?? headerHarness ?? "auto";
+    const given = (body.metadata?.harness_id as string | undefined) ?? headerHarness ?? "auto";
+    const raw = normalizeHarnessId(given);
     if (raw !== "auto" && !(HARNESS_IDS as readonly string[]).includes(raw)) {
-      throw new ApiError(404, "invalid_request_error", "harness_not_found", `unknown harness '${raw}'`, "metadata.harness_id");
+      throw new ApiError(404, "invalid_request_error", "harness_not_found", `unknown harness '${given}'`, "metadata.harness_id");
     }
     return { harness: raw as HarnessId | "auto" };
   }
@@ -196,7 +242,7 @@ export class GatewayService {
     const model = body.model && !BARE_MODELS.has(body.model) ? body.model : (body.metadata?.model as string | undefined);
     const effort = body.reasoning?.effort ?? (body.metadata?.reasoning_effort as Effort | undefined);
     if (effort && !(EFFORTS as readonly string[]).includes(effort)) {
-      throw new ApiError(400, "invalid_request_error", "invalid_effort", `invalid effort '${effort}'`, "reasoning.effort");
+      throw new ApiError(400, "invalid_request_error", "invalid_input", `invalid effort '${effort}'`, "reasoning.effort");
     }
     if (harness !== "auto") {
       const status = this.harnessStatus(harness);
@@ -220,7 +266,7 @@ export class GatewayService {
       });
     } catch (err) {
       if (err instanceof RouteError) {
-        throw new ApiError(422, "invalid_request_error", err.code, err.message, null, err.detail);
+        throw new ApiError(422, "invalid_request_error", `jevroute.${err.code}`, err.message, null, err.detail);
       }
       throw err;
     }
@@ -237,7 +283,7 @@ export class GatewayService {
       const prior = this.store.getByIdempotencyKey(idemKey);
       if (prior) {
         if (prior.request_hash !== requestHash) {
-          throw new ApiError(409, "invalid_request_error", "idempotency_key_reused", "Idempotency-Key was already used with a different request body");
+          throw new ApiError(409, "invalid_request_error", "jevroute.idempotency_key_reused", "Idempotency-Key was already used with a different request body");
         }
         return this.deliver(prior.id, body);
       }
@@ -392,7 +438,7 @@ export class GatewayService {
         status = run.cancelRequested || result === "cancelled" ? "cancelled" : result;
       }
     } catch (err) {
-      run.builder.error = { type: "server_error", code: "sandbox_unavailable", message: (err as Error).message };
+      run.builder.error = { type: "server_error", code: "harness_unavailable", message: `sandbox unavailable: ${(err as Error).message}` };
       status = "failed";
     }
 
@@ -500,7 +546,7 @@ export class GatewayService {
   delete(id: string): { id: string; object: string; deleted: boolean } {
     const row = this.store.getResponse(id);
     if (!row) throw new ApiError(404, "invalid_request_error", "response_not_found", `no response '${id}'`);
-    if (row.status === "in_progress") throw new ApiError(409, "invalid_request_error", "response_in_progress", "cancel the response before deleting it");
+    if (row.status === "in_progress") throw new ApiError(409, "invalid_request_error", "jevroute.response_in_progress", "cancel the response before deleting it");
     this.store.deleteResponse(id);
     return { id, object: "response.deleted", deleted: true };
   }
@@ -516,7 +562,7 @@ export class GatewayService {
 
   feedback(id: string, raw: unknown) {
     const parsed = z.object({ score: z.number().min(0).max(1), comment: z.string().max(2000).optional() }).safeParse(raw);
-    if (!parsed.success) throw new ApiError(400, "invalid_request_error", "invalid_feedback", "body must be {score: 0..1, comment?}");
+    if (!parsed.success) throw new ApiError(400, "invalid_request_error", "invalid_input", "body must be {score: 0..1, comment?}");
     const row = this.store.getResponse(id);
     if (!row) throw new ApiError(404, "invalid_request_error", "response_not_found", `no response '${id}'`);
     this.store.setFeedback(id, parsed.data.score, parsed.data.comment);
@@ -596,11 +642,15 @@ export class GatewayService {
   }
 }
 
+export function normalizeHarnessId(id: string): string {
+  return id.startsWith("chrn_") ? id.slice(5) : id;
+}
+
 export function parseBody(raw: unknown): CreateBody {
   const parsed = CreateBody.safeParse(raw);
   if (!parsed.success) {
     const issue = parsed.error.issues[0]!;
-    throw new ApiError(400, "invalid_request_error", "invalid_request", issue.message, issue.path.join(".") || null);
+    throw new ApiError(400, "invalid_request_error", "invalid_input", issue.message, issue.path.join(".") || null);
   }
   return parsed.data;
 }
@@ -618,7 +668,7 @@ export function promptOf(body: CreateBody): string {
     }
   }
   const text = parts.join("\n\n").trim();
-  if (!text) throw new ApiError(400, "invalid_request_error", "empty_input", "input contains no text", "input");
+  if (!text) throw new ApiError(400, "invalid_request_error", "invalid_input", "input contains no text", "input");
   return body.instructions ? `${body.instructions.trim()}\n\n${text}` : text;
 }
 
