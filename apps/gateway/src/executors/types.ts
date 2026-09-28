@@ -19,8 +19,15 @@ export interface Executor {
   hostCredentials?(): Set<string>;
   /** Which harness CLIs this executor can run. */
   installed(): Promise<Record<HarnessId, boolean>>;
-  /** Returns a running sandbox for the session, creating or restarting it as needed. */
-  ensureSandbox(sessionId: string, existingId: string | null): Promise<Sandbox>;
+  /**
+   * Returns a running sandbox for the session, creating or restarting it as needed. With a
+   * project, the workspace is the project's persistent one (files, git history, .jev/ ledger).
+   */
+  ensureSandbox(sessionId: string, existingId: string | null, projectId: string | null): Promise<Sandbox>;
+  /** Reads a file from a project's workspace; null if the project or file doesn't exist. */
+  readProjectFile(projectId: string, relPath: string): Promise<string | null>;
+  /** Deletes a project's workspace permanently. */
+  destroyProject(projectId: string): Promise<void>;
   run(sandbox: Sandbox, spec: RunSpec, onEvent: (e: RunEvent) => void): RunHandle;
   /** Frees compute but keeps the session's files (idle reaping). */
   stopSandbox(sandboxId: string): Promise<void>;

@@ -15,7 +15,7 @@ const emit = (o) => process.stdout.write(JSON.stringify(o) + "\n");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 (async () => {
   // Markers apply to the new request only, never to a ledger briefing in front of it.
-  const briefed = spec.prompt.startsWith("You are continuing a task");
+  const briefed = spec.prompt.startsWith("You are continuing work");
   const request = briefed ? spec.prompt.slice(spec.prompt.lastIndexOf("New request:\n") + 13) : spec.prompt;
   const slow = request.includes("MOCK_SLOW");
   emit({ kind: "session", id: spec.harness_session_id || "mock-" + spec.run_id });

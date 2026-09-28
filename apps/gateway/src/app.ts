@@ -103,6 +103,7 @@ export function createApp(service: GatewayService, apiKeys: string[]): Hono {
     const result = await service.create(body, {
       idempotencyKey: c.req.header("idempotency-key"),
       harnessId: c.req.header("x-harness-id"),
+      projectId: c.req.header("x-project-id"),
     });
     if (result.kind === "json") return c.json(result.body);
     return sse(c, service, result.id);
@@ -126,6 +127,17 @@ export function createApp(service: GatewayService, apiKeys: string[]): Hono {
   app.post("/v1/sessions/:id/cancel", async (c) => c.json(await service.cancelSession(c.req.param("id"))));
 
   app.get("/v1/stats", (c) => c.json(service.stats()));
+
+  app.get("/v1/projects/:id", (c) => c.json(service.getProject(c.req.param("id"))));
+  app.get("/v1/projects/:id/memory", async (c) => {
+    const turn = c.req.query("turn") ? Number(c.req.query("turn")) : undefined;
+    if (turn !== undefined && !(Number.isInteger(turn) && turn > 0)) {
+      throw new ApiError(400, "invalid_request_error", "invalid_input", "turn must be a positive integer", "turn");
+    }
+    const text = await service.projectMemory(c.req.param("id"), turn);
+    return c.body(text, 200, { "Content-Type": "text/markdown; charset=utf-8" });
+  });
+  app.delete("/v1/projects/:id", async (c) => c.json(await service.deleteProject(c.req.param("id"))));
 
   return app;
 }

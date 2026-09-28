@@ -44,6 +44,7 @@ const SUMMARY_CHARS = 400;
 const MAX_FILES_LISTED = 25;
 
 export interface TurnRecord {
+  session?: string;
   harness: string;
   model: string;
   effort?: string;
@@ -138,7 +139,7 @@ export async function briefing(cwd: string): Promise<string | null> {
   }
   const older = turns.length - recent.length;
   return [
-    "You are continuing a task that other agents have been working on in this workspace.",
+    "You are continuing work that other agents (possibly in earlier sessions) did in this workspace.",
     "The files here reflect all prior work. Each earlier turn is a git commit (`git log`, `git show`),",
     `and ${MEMORY_FILE} plus ${TURNS_DIR}/ record what was asked and done. Recent turns:`,
     "",
@@ -161,7 +162,7 @@ export async function recordTurn(cwd: string, t: TurnRecord): Promise<Checkpoint
       (f) => !f.path.startsWith(`${LEDGER_DIR}/`),
     );
     const summary = summarize(t);
-    const header = `## Turn ${turn} — ${t.harness} · ${t.model}${t.effort ? ` · ${t.effort}` : ""} · ${t.status}`;
+    const header = `## Turn ${turn} — ${t.harness} · ${t.model}${t.effort ? ` · ${t.effort}` : ""} · ${t.status}${t.session ? ` · ${t.session}` : ""}`;
     const fileLine = files.length
       ? files.slice(0, MAX_FILES_LISTED).map((f) => `${f.status} ${f.path}`).join(", ") +
         (files.length > MAX_FILES_LISTED ? `, … (+${files.length - MAX_FILES_LISTED})` : "")

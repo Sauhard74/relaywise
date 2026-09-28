@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { mkdir, rm } from "node:fs/promises";
+import { mkdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { HarnessId } from "@jev-route/core";
 import { runHarness } from "@jev-route/agentd";
@@ -49,10 +49,22 @@ export class LocalExecutor implements Executor {
     return result;
   }
 
-  async ensureSandbox(sessionId: string): Promise<Sandbox> {
-    const cwd = join(this.workspacesDir, sessionId);
+  async ensureSandbox(sessionId: string, _existing: string | null, projectId: string | null): Promise<Sandbox> {
+    const cwd = projectId ? this.projectDir(projectId) : join(this.workspacesDir, sessionId);
     await mkdir(cwd, { recursive: true });
     return { id: sessionId, cwd };
+  }
+
+  async readProjectFile(projectId: string, relPath: string): Promise<string | null> {
+    return readFile(join(this.projectDir(projectId), relPath), "utf8").catch(() => null);
+  }
+
+  async destroyProject(projectId: string): Promise<void> {
+    await rm(this.projectDir(projectId), { recursive: true, force: true });
+  }
+
+  private projectDir(projectId: string): string {
+    return join(this.workspacesDir, "projects", projectId);
   }
 
   run(_sandbox: Sandbox, spec: Parameters<Executor["run"]>[1], onEvent: Parameters<Executor["run"]>[2]): RunHandle {

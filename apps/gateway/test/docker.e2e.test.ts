@@ -19,6 +19,9 @@ describe.skipIf(!enabled)("DockerExecutor (real containers)", () => {
   });
   afterAll(async () => {
     await executor.destroySandbox(session, null);
+    await executor.destroySandbox(`${session}p1`, null);
+    await executor.destroySandbox(`${session}p2`, null);
+    await executor.destroyProject(`proj-${session}`);
   });
 
   const spec = (over: Partial<RunSpec> = {}): RunSpec => ({
@@ -32,7 +35,7 @@ describe.skipIf(!enabled)("DockerExecutor (real containers)", () => {
   });
 
   const run = async (s: RunSpec, cancelAfterMs?: number) => {
-    const sandbox = await executor.ensureSandbox(session, null);
+    const sandbox = await executor.ensureSandbox(session, null, null);
     const events: RunEvent[] = [];
     const handle = executor.run(sandbox, s, (e) => events.push(e));
     if (cancelAfterMs) setTimeout(() => void handle.cancel(), cancelAfterMs);
@@ -64,11 +67,25 @@ describe.skipIf(!enabled)("DockerExecutor (real containers)", () => {
     expect(Date.now() - t0).toBeLessThan(8_000);
   });
 
+  it("shares a project's workspace and ledger across sessions", async () => {
+    const project = `proj-${session}`;
+    const a = await executor.ensureSandbox(`${session}p1`, null, project);
+    const first = executor.run(a, spec({ prompt: "MOCK_WRITE shared.txt" }), () => {});
+    expect(await first.done).toBe("completed");
+    await executor.stopSandbox(a.id);
+    // A different session in the same project sees the file and the ledger.
+    const b = await executor.ensureSandbox(`${session}p2`, null, project);
+    const ls = execFileSync("docker", ["exec", b.id, "ls", "-a", "/home/agent/workspace"], { encoding: "utf8" });
+    expect(ls).toContain("shared.txt");
+    expect(await executor.readProjectFile(project, ".jev/MEMORY.md")).toContain("## Turn 1");
+    await executor.stopSandbox(b.id);
+  });
+
   it("keeps the workspace when an idle container is reaped and recreated", async () => {
-    const first = await executor.ensureSandbox(session, null);
+    const first = await executor.ensureSandbox(session, null, null);
     execFileSync("docker", ["exec", first.id, "sh", "-c", "echo persisted > /home/agent/workspace/note.txt"]);
     await executor.stopSandbox(first.id);
-    const second = await executor.ensureSandbox(session, null);
+    const second = await executor.ensureSandbox(session, null, null);
     const note = execFileSync("docker", ["exec", second.id, "cat", "/home/agent/workspace/note.txt"], { encoding: "utf8" });
     expect(note.trim()).toBe("persisted");
   });

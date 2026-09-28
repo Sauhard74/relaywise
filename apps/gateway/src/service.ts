@@ -287,7 +287,10 @@ export class GatewayService {
 
   // ---- create --------------------------------------------------------------------------------
 
-  async create(raw: unknown, headers: { idempotencyKey?: string; harnessId?: string }): Promise<CreateResult> {
+  async create(
+    raw: unknown,
+    headers: { idempotencyKey?: string; harnessId?: string; projectId?: string },
+  ): Promise<CreateResult> {
     const body = parseBody(raw);
     const idemKey = headers.idempotencyKey ?? (body.metadata?.idempotency_key as string | undefined);
     const requestHash = createHash("sha256").update(stableStringify(body)).digest("hex");
@@ -303,6 +306,7 @@ export class GatewayService {
     }
 
     const { harness: requested } = this.requestedHarness(body, headers.harnessId);
+    const project = requestedProject(body, headers.projectId);
     let session: SessionRow;
     let decision: RouteDecision;
 
@@ -316,22 +320,29 @@ export class GatewayService {
       if (requested !== "auto" && requested !== s.requested_harness) {
         throw new ApiError(409, "invalid_request_error", "harness_mismatch", `session runs '${s.requested_harness}', not '${requested}'`, "metadata.harness_id");
       }
+      if (project && project !== s.project_id) {
+        throw new ApiError(409, "invalid_request_error", "jevroute.project_mismatch", `this session belongs to project '${s.project_id ?? "(none)"}'`, "metadata.project_id");
+      }
       if (!this.store.claimSession(s.id)) {
         const replay = idemKey ? this.store.getByIdempotencyKey(idemKey) : undefined;
         if (replay?.request_hash === requestHash) return this.deliver(replay.id, body);
         throw new ApiError(409, "invalid_request_error", "session_busy", "a turn is already running in this session");
+      }
+      if (s.project_id && !this.store.claimProject(s.project_id)) {
+        this.store.updateSession(s.id, { busy: 0 });
+        throw projectBusy(s.project_id);
       }
       session = s;
       try {
         decision =
           s.requested_harness === "auto"
             ? await this.route(body, "auto", {
-                context: this.sessionContext(s.id),
+                context: this.turnContext(this.recentTurns(s.id, s.project_id)),
                 continuity: { harness: s.harness, model: s.model },
               })
             : this.stickyDecision(body, s, prev.effort as Effort | null);
       } catch (err) {
-        this.store.updateSession(s.id, { busy: 0 });
+        this.release(s);
         throw err;
       }
       // Same harness: resume its own session. Different harness (or one that can't resume):
@@ -339,12 +350,27 @@ export class GatewayService {
       const native = this.cfg.catalog.harnesses[decision.harness].native_resume;
       decision.handoff = decision.harness !== s.harness || !native;
     } else {
-      decision = await this.route(body, requested);
+      // A project's workspace and ledger outlive sessions: a new session's first turn is
+      // routed with the project's recent history and briefed from its ledger.
+      let history: ResponseRow[] = [];
+      if (project) {
+        this.store.ensureProject(project);
+        if (!this.store.claimProject(project)) throw projectBusy(project);
+        history = this.store.projectTurns(project, 5);
+      }
+      try {
+        decision = await this.route(body, requested, history.length ? { context: this.turnContext(history) } : undefined);
+      } catch (err) {
+        if (project) this.store.releaseProject(project);
+        throw err;
+      }
+      if (history.length) decision.handoff = true;
       session = this.store.createSession({
         id: newId("sess"),
         harness: decision.harness,
         model: decision.model,
         requested_harness: requested,
+        project_id: project,
       });
       this.store.claimSession(session.id);
     }
@@ -378,7 +404,7 @@ export class GatewayService {
     try {
       this.store.insertResponse(row);
     } catch (err) {
-      this.store.updateSession(session.id, { busy: 0 });
+      this.release(session);
       // Concurrent duplicate with the same idempotency key.
       if (idemKey && String(err).includes("UNIQUE")) return this.deliver(this.store.getByIdempotencyKey(idemKey)!.id, body);
       throw err;
@@ -405,13 +431,21 @@ export class GatewayService {
     };
   }
 
+  private recentTurns(sessionId: string, projectId: string | null): ResponseRow[] {
+    return projectId ? this.store.projectTurns(projectId, 5) : this.store.sessionTurns(sessionId, 5);
+  }
+
+  private release(s: Pick<SessionRow, "id" | "project_id">): void {
+    this.store.updateSession(s.id, { busy: 0 });
+    if (s.project_id) this.store.releaseProject(s.project_id);
+  }
+
   /** Short digest of recent turns, for routing follow-ups in context. */
-  private sessionContext(sessionId: string): string {
-    const turns = this.store.sessionTurns(sessionId, 5);
+  private turnContext(turns: ResponseRow[]): string {
     if (turns.length === 0) return "";
     const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s).replace(/\s+/g, " ");
     return [
-      "Earlier turns in this session:",
+      "Earlier turns in this session or project:",
       ...turns.map((t, i) => {
         const cp = t.checkpoint_json ? (JSON.parse(t.checkpoint_json) as { files: { path: string }[] }) : null;
         const files = cp?.files.length ? ` Files: ${cp.files.slice(0, 8).map((f) => f.path).join(", ")}.` : "";
@@ -466,7 +500,7 @@ export class GatewayService {
     let status: ResponseStatus = "failed";
     const nativeSessions = JSON.parse(session.harness_sessions || "{}") as Record<string, string>;
     try {
-      const sandbox = await this.executor.ensureSandbox(session.id, session.sandbox_id);
+      const sandbox = await this.executor.ensureSandbox(session.id, session.sandbox_id, session.project_id);
       if (sandbox.id !== session.sandbox_id) this.store.updateSession(session.id, { sandbox_id: sandbox.id });
       if (run.cancelRequested) {
         status = "cancelled";
@@ -485,6 +519,7 @@ export class GatewayService {
             ? { harness_session_id: nativeSessions[decision.harness] }
             : {}),
           ...(decision.handoff ? { handoff: true } : {}),
+          session_label: session.id,
           env,
           ...(body.max_step ? { max_turns: body.max_step } : {}),
           timeout_ms: body.timeout_seconds ? body.timeout_seconds * 1000 : this.cfg.defaultTimeoutMs,
@@ -516,6 +551,7 @@ export class GatewayService {
       duration_ms: Date.now() - started,
     });
     if (b.harnessSessionId) nativeSessions[decision.harness] = b.harnessSessionId;
+    if (session.project_id) this.store.releaseProject(session.project_id);
     this.store.updateSession(session.id, {
       busy: 0,
       last_used_at: Date.now(),
@@ -538,6 +574,7 @@ export class GatewayService {
     const usage: Usage | null = live ? run.builder.usage : row.usage_json ? JSON.parse(row.usage_json) : null;
     const error: ErrorInfo | null = row.error_json ? JSON.parse(row.error_json) : null;
     const route = row.route_json ? (JSON.parse(row.route_json) as RouteDecision) : null;
+    const projectOf = this.store.getSession(row.session_id)?.project_id ?? null;
     return {
       id: row.id,
       object: "response",
@@ -554,6 +591,7 @@ export class GatewayService {
       metadata: {
         ...JSON.parse(row.metadata_json),
         session_id: row.session_id,
+        ...(projectOf ? { project_id: projectOf } : {}),
         harness_id: row.harness,
         ...(row.effort ? { reasoning_effort: row.effort } : {}),
         ...(route ? { route } : {}),
@@ -684,6 +722,40 @@ export class GatewayService {
     };
   }
 
+  // ---- projects ------------------------------------------------------------------------------
+
+  getProject(id: string) {
+    const p = this.store.getProject(id);
+    if (!p) throw new ApiError(404, "invalid_request_error", "jevroute.project_not_found", `no project '${id}'`);
+    return {
+      id: p.id,
+      object: "project",
+      busy: p.busy === 1,
+      created_at: Math.floor(p.created_at / 1000),
+      last_used_at: Math.floor(p.last_used_at / 1000),
+      ...this.store.projectStats(id),
+    };
+  }
+
+  /** The project's ledger (.jev/MEMORY.md), or one turn's full record. */
+  async projectMemory(id: string, turn?: number): Promise<string> {
+    this.getProject(id);
+    const path = turn ? `.jev/turns/${String(turn).padStart(4, "0")}.md` : ".jev/MEMORY.md";
+    const text = await this.executor.readProjectFile(id, path);
+    if (text === null) throw new ApiError(404, "invalid_request_error", "jevroute.memory_not_found", `no ${turn ? `turn ${turn}` : "memory"} yet for project '${id}'`);
+    return text;
+  }
+
+  async deleteProject(id: string) {
+    const p = this.getProject(id);
+    if (p.busy) throw projectBusy(id);
+    const sessions = this.store.db.prepare(`SELECT id, sandbox_id FROM sessions WHERE project_id = ?`).all(id) as SessionRow[];
+    for (const s of sessions) await this.executor.destroySandbox(s.id, s.sandbox_id);
+    await this.executor.destroyProject(id);
+    this.store.deleteProject(id);
+    return { id, object: "project.deleted", deleted: true };
+  }
+
   // ---- housekeeping --------------------------------------------------------------------------
 
   async reap(now = Date.now()): Promise<void> {
@@ -704,6 +776,21 @@ export class GatewayService {
   private emptyInstalled(): Record<HarnessId, boolean> {
     return Object.fromEntries(HARNESS_IDS.map((h) => [h, false])) as Record<HarnessId, boolean>;
   }
+}
+
+const PROJECT_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
+
+function requestedProject(body: CreateBody, header: string | undefined): string | null {
+  const raw = (body.metadata?.project_id as string | undefined) ?? header;
+  if (raw === undefined || raw === "") return null;
+  if (typeof raw !== "string" || !PROJECT_ID.test(raw)) {
+    throw new ApiError(400, "invalid_request_error", "invalid_input", "project_id must be 1-64 characters of letters, digits, '-' or '_'", "metadata.project_id");
+  }
+  return raw;
+}
+
+function projectBusy(id: string): ApiError {
+  return new ApiError(409, "invalid_request_error", "jevroute.project_busy", `a turn is already running in project '${id}'`, "metadata.project_id");
 }
 
 export function normalizeHarnessId(id: string): string {

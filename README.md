@@ -99,6 +99,14 @@ on different harnesses because memory lives in the workspace, not in any one age
   never rewrite history or edit `.jev/`, and open the final message with a one-line summary —
   which becomes the ledger entry.
 
+**Projects** make that memory permanent. Send `metadata.project_id` (or `X-Project-Id`) and the
+workspace — files, git history and `.jev/` — belongs to the project instead of the session: a
+brand-new session starts with everything earlier sessions did, its first turn is routed with the
+project's history and briefed from the ledger, and turn numbers continue. One turn runs at a time
+per project (`jevroute.project_busy`). `GET /v1/projects/:id` shows stats,
+`GET /v1/projects/:id/memory` returns `MEMORY.md` (`?turn=N` for one turn in full), and
+`DELETE /v1/projects/:id` removes it. Project workspaces don't expire.
+
 Each response reports its commit, turn number and files in `metadata.checkpoint`, and whether it
 was a handoff in `metadata.route.handoff`. Sessions pinned to a harness keep it (UHP
 `harness_mismatch` otherwise). Tested live: Claude Code wrote a function; Codex, with none of that

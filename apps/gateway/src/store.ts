@@ -43,6 +43,7 @@ export interface SessionRow {
   /** Native session id per harness (JSON map), for resuming when a harness is reused. */
   harness_sessions: string;
   sandbox_id: string | null;
+  project_id: string | null;
   busy: number;
   created_at: number;
   last_used_at: number;
@@ -50,6 +51,12 @@ export interface SessionRow {
 }
 
 const SCHEMA = `
+CREATE TABLE IF NOT EXISTS projects (
+  id TEXT PRIMARY KEY,
+  busy INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  last_used_at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
   harness TEXT NOT NULL,
@@ -57,6 +64,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   requested_harness TEXT NOT NULL DEFAULT 'auto',
   harness_sessions TEXT NOT NULL DEFAULT '{}',
   sandbox_id TEXT,
+  project_id TEXT,
   busy INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,
   last_used_at INTEGER NOT NULL,
@@ -121,13 +129,18 @@ export class Store {
     add("sessions", "requested_harness", "TEXT NOT NULL DEFAULT 'auto'");
     add("sessions", "harness_sessions", "TEXT NOT NULL DEFAULT '{}'");
     add("responses", "checkpoint_json", "TEXT");
+    add("sessions", "project_id", "TEXT");
   }
 
-  createSession(s: Pick<SessionRow, "id" | "harness" | "model"> & { requested_harness?: string }): SessionRow {
+  createSession(
+    s: Pick<SessionRow, "id" | "harness" | "model"> & { requested_harness?: string; project_id?: string | null },
+  ): SessionRow {
     const now = Date.now();
     this.db
-      .prepare(`INSERT INTO sessions (id, harness, model, requested_harness, created_at, last_used_at) VALUES (?, ?, ?, ?, ?, ?)`)
-      .run(s.id, s.harness, s.model, s.requested_harness ?? "auto", now, now);
+      .prepare(
+        `INSERT INTO sessions (id, harness, model, requested_harness, project_id, created_at, last_used_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(s.id, s.harness, s.model, s.requested_harness ?? "auto", s.project_id ?? null, now, now);
     return this.getSession(s.id)!;
   }
 
@@ -168,9 +181,59 @@ export class Store {
       .changes === 1;
   }
 
+  // ---- projects: a persistent workspace + ledger shared by many sessions ----
+
+  ensureProject(id: string): void {
+    const now = Date.now();
+    this.db
+      .prepare(`INSERT INTO projects (id, created_at, last_used_at) VALUES (?, ?, ?) ON CONFLICT(id) DO NOTHING`)
+      .run(id, now, now);
+  }
+
+  getProject(id: string): { id: string; busy: number; created_at: number; last_used_at: number } | undefined {
+    return this.db.prepare(`SELECT * FROM projects WHERE id = ?`).get(id) as never;
+  }
+
+  /** One turn at a time per project: its sessions share files. */
+  claimProject(id: string): boolean {
+    return this.db.prepare(`UPDATE projects SET busy = 1, last_used_at = ? WHERE id = ? AND busy = 0`).run(Date.now(), id)
+      .changes === 1;
+  }
+
+  releaseProject(id: string): void {
+    this.db.prepare(`UPDATE projects SET busy = 0, last_used_at = ? WHERE id = ?`).run(Date.now(), id);
+  }
+
+  deleteProject(id: string): void {
+    this.db.prepare(`UPDATE sessions SET expired = 1, sandbox_id = NULL WHERE project_id = ?`).run(id);
+    this.db.prepare(`DELETE FROM projects WHERE id = ?`).run(id);
+  }
+
+  projectStats(id: string): { sessions: number; turns: number } {
+    return this.db
+      .prepare(
+        `SELECT COUNT(DISTINCT s.id) AS sessions, COUNT(r.id) AS turns
+         FROM sessions s LEFT JOIN responses r ON r.session_id = s.id WHERE s.project_id = ?`,
+      )
+      .get(id) as { sessions: number; turns: number };
+  }
+
+  /** Recent turns across every session of a project, oldest first. */
+  projectTurns(projectId: string, limit: number): ResponseRow[] {
+    return (
+      this.db
+        .prepare(
+          `SELECT r.* FROM responses r JOIN sessions s ON s.id = r.session_id
+           WHERE s.project_id = ? ORDER BY r.created_at DESC LIMIT ?`,
+        )
+        .all(projectId, limit) as ResponseRow[]
+    ).reverse();
+  }
+
   /** Clears busy flags left behind by a crash. */
   resetBusy(): void {
     this.db.prepare(`UPDATE sessions SET busy = 0 WHERE busy = 1`).run();
+    this.db.prepare(`UPDATE projects SET busy = 0 WHERE busy = 1`).run();
     this.db
       .prepare(
         `UPDATE responses SET status = 'failed', error_json = '{"type":"server_error","code":"jevroute.gateway_restarted","message":"gateway restarted during the run"}', completed_at = ? WHERE status IN ('queued', 'in_progress')`,

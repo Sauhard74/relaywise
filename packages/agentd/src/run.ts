@@ -171,6 +171,7 @@ export async function runHarness(
 
   if (ledger) {
     const cp = await recordTurn(spec.cwd, {
+      session: spec.session_label,
       harness: spec.harness,
       model: spec.model,
       effort: spec.effort,

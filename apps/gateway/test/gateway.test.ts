@@ -246,7 +246,7 @@ describe("sessions across models (ledger memory)", () => {
     const t2 = await (
       await post("/v1/responses", { input: "now refactor the architecture around it", previous_response_id: t1.id })
     ).json();
-    expect(lastJevState).toContain("Earlier turns in this session:");
+    expect(lastJevState).toContain("Earlier turns in this session or project:");
     expect(lastJevState).toContain("notes.md");
     expect(t2.model).toBe("mock-large"); // harder follow-up → stronger model
     expect(t2.metadata.route).toMatchObject({ source: "jev", handoff: false }); // same harness: native resume
@@ -272,6 +272,55 @@ describe("sessions across models (ledger memory)", () => {
     ).json();
     expect(t2.metadata.route.source).toBe("session");
     expect(t2.model).toBe(t1.model);
+  });
+});
+
+describe("projects: memory that outlives sessions", () => {
+  it("carries files and the ledger into a brand-new session", async () => {
+    const s1 = await (await post("/v1/responses", { input: "start MOCK_WRITE plan.md", metadata: { project_id: "demo" } })).json();
+    expect(s1.metadata.project_id).toBe("demo");
+    expect(s1.metadata.route.handoff).toBeFalsy();
+
+    // No previous_response_id: a new session, same project.
+    const s2 = await (await post("/v1/responses", { input: "continue the plan", metadata: { project_id: "demo" } })).json();
+    expect(s2.metadata.session_id).not.toBe(s1.metadata.session_id);
+    expect(s2.metadata.route.handoff).toBe(true);
+    expect(s2.output_text).toContain("(briefed) done: continue the plan");
+    expect(lastJevState).toContain("start MOCK_WRITE plan.md"); // routed with project history
+    expect(s2.metadata.checkpoint.turn).toBe(2); // turn numbering continues across sessions
+
+    const memory = await (await get("/v1/projects/demo/memory")).text();
+    expect(memory).toContain(`## Turn 1`);
+    expect(memory).toContain(s1.metadata.session_id);
+    expect(memory).toContain(s2.metadata.session_id);
+    expect(await (await get("/v1/projects/demo/memory?turn=1")).text()).toContain("### Request");
+
+    const info = await (await get("/v1/projects/demo")).json();
+    expect(info).toMatchObject({ id: "demo", sessions: 2, turns: 2, busy: false });
+  });
+
+  it("runs one turn at a time per project", async () => {
+    const running = await (await post("/v1/responses", { input: "MOCK_SLOW work", background: true, metadata: { project_id: "busy" } })).json();
+    const clash = await post("/v1/responses", { input: "other", metadata: { project_id: "busy" } });
+    expect(clash.status).toBe(409);
+    expect((await clash.json()).error.code).toBe("jevroute.project_busy");
+    await post(`/v1/responses/${running.id}/cancel`, {});
+    const after = await post("/v1/responses", { input: "now it's free", metadata: { project_id: "busy" } });
+    expect(after.status).toBe(200);
+  });
+
+  it("validates project ids and refuses to move a session between projects", async () => {
+    expect((await post("/v1/responses", { input: "x", metadata: { project_id: "../etc" } })).status).toBe(400);
+    const s1 = await (await post("/v1/responses", { input: "x", metadata: { project_id: "p1" } })).json();
+    const res = await post("/v1/responses", { input: "y", previous_response_id: s1.id, metadata: { project_id: "p2" } });
+    expect(res.status).toBe(409);
+    expect((await res.json()).error.code).toBe("jevroute.project_mismatch");
+  });
+
+  it("deletes a project and its memory", async () => {
+    await post("/v1/responses", { input: "x", metadata: { project_id: "gone" } });
+    expect((await app.request("/v1/projects/gone", { method: "DELETE", headers: auth })).status).toBe(200);
+    expect((await get("/v1/projects/gone")).status).toBe(404);
   });
 });
 

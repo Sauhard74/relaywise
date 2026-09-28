@@ -39,7 +39,7 @@ export class DockerExecutor implements Executor {
     return this.installedCache;
   }
 
-  async ensureSandbox(sessionId: string, existingId: string | null): Promise<Sandbox> {
+  async ensureSandbox(sessionId: string, existingId: string | null, projectId: string | null): Promise<Sandbox> {
     const name = containerName(sessionId);
     const state = await this.exec(["inspect", "-f", "{{.State.Running}}", existingId ?? name]).catch(() => undefined);
     if (state?.trim() === "true") return { id: existingId ?? name, cwd: WORKDIR };
@@ -69,6 +69,8 @@ export class DockerExecutor implements Executor {
         this.opts.network,
         "-v",
         `${volumeName(sessionId)}:/home/agent`,
+        // A project's workspace outlives any one session; harness state stays per session.
+        ...(projectId ? ["-v", `${projectVolume(projectId)}:${WORKDIR}`] : []),
         this.opts.image,
       ])
     ).trim();
@@ -132,6 +134,30 @@ export class DockerExecutor implements Executor {
     await this.exec(["volume", "rm", "-f", volumeName(sessionId)]).catch(() => undefined);
   }
 
+  async readProjectFile(projectId: string, relPath: string): Promise<string | null> {
+    const exists = await this.exec(["volume", "inspect", projectVolume(projectId)]).then(
+      () => true,
+      () => false,
+    );
+    if (!exists) return null;
+    return this.exec([
+      "run",
+      "--rm",
+      "--network",
+      "none",
+      "-v",
+      `${projectVolume(projectId)}:/w:ro`,
+      "--entrypoint",
+      "cat",
+      this.opts.image,
+      `/w/${relPath}`,
+    ]).catch(() => null);
+  }
+
+  async destroyProject(projectId: string): Promise<void> {
+    await this.exec(["volume", "rm", "-f", projectVolume(projectId)]).catch(() => undefined);
+  }
+
   private exec(args: string[]): Promise<string> {
     return new Promise((resolve, reject) => {
       const child = spawn(this.bin, args, { stdio: ["ignore", "pipe", "pipe"] });
@@ -149,6 +175,10 @@ export class DockerExecutor implements Executor {
 
 function containerName(sessionId: string): string {
   return `jev-route-${sessionId.replace(/[^\w.-]/g, "")}`;
+}
+
+function projectVolume(projectId: string): string {
+  return `jev-route-proj-${projectId.replace(/[^\w.-]/g, "")}`;
 }
 
 function volumeName(sessionId: string): string {

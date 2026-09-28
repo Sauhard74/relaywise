@@ -40,6 +40,8 @@ export interface RunSpec {
   handoff?: boolean;
   /** Commit the turn and append it to the session ledger. Default true. */
   ledger?: boolean;
+  /** Recorded in the ledger so a project's history shows which session each turn came from. */
+  session_label?: string;
   env: Record<string, string>;
   max_turns?: number;
   timeout_ms?: number;
