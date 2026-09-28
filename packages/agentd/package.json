@@ -1,0 +1,12 @@
+{
+  "name": "@jev-route/agentd",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "bin": { "agentd": "./dist/agentd.mjs" },
+  "scripts": {
+    "build": "esbuild src/cli.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/agentd.mjs"
+  },
+  "dependencies": { "@jev-route/core": "workspace:*" },
+  "devDependencies": { "esbuild": "^0.24.0" }
+}
