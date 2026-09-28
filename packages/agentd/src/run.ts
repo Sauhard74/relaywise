@@ -44,8 +44,8 @@ export async function runHarness(
   const command = driver.build(spec);
   await mkdir(spec.cwd, { recursive: true });
   for (const [path, content] of Object.entries(command.files ?? {})) {
-    await mkdir(dirname(path), { recursive: true });
-    await writeFile(path, content);
+    await mkdir(dirname(path), { recursive: true, mode: 0o700 });
+    await writeFile(path, content, { mode: 0o600 });
   }
 
   const env: Record<string, string> = {};

@@ -15,6 +15,8 @@ export interface Sandbox {
 
 export interface Executor {
   readonly kind: "docker" | "local";
+  /** Credentials satisfied by the host's own CLI logins (local executor only). */
+  hostCredentials?(): Set<string>;
   /** Which harness CLIs this executor can run. */
   installed(): Promise<Record<HarnessId, boolean>>;
   /** Returns a running sandbox for the session, creating or restarting it as needed. */

@@ -67,7 +67,7 @@ const BARE_MODELS = new Set(["", "auto", "claude", "claude-code", "codex", "open
 /** Least privilege: each harness only receives the credentials it uses. */
 const HARNESS_ENV: Record<HarnessId, string[]> = {
   "claude-code": ["ANTHROPIC_API_KEY", "ANTHROPIC_BASE_URL", "CLAUDE_CODE_OAUTH_TOKEN"],
-  codex: ["OPENAI_API_KEY", "OPENAI_BASE_URL", "CODEX_API_KEY"],
+  codex: ["OPENAI_API_KEY", "OPENAI_BASE_URL", "CODEX_API_KEY", "CODEX_AUTH_JSON"],
   opencode: ["OPENROUTER_API_KEY"],
   hermes: ["OPENROUTER_API_KEY"],
   mock: [],
@@ -87,6 +87,7 @@ export type CreateResult = { kind: "json"; body: Record<string, unknown> } | { k
 export class GatewayService {
   private readonly active = new Map<string, ActiveRun>();
   private installed?: Record<HarnessId, boolean>;
+  private hostCredentials?: Set<string>;
   private reaper?: NodeJS.Timeout;
 
   constructor(
@@ -100,6 +101,7 @@ export class GatewayService {
   async init(): Promise<void> {
     this.store.resetBusy();
     this.installed = await this.executor.installed().catch(() => this.emptyInstalled());
+    this.hostCredentials = this.executor.hostCredentials?.();
   }
 
   startReaper(intervalMs = 60_000): void {
@@ -126,7 +128,13 @@ export class GatewayService {
     return { available: missing.length === 0, missing };
   }
 
-  isOptionAvailable = (o: CatalogOption): boolean => this.harnessStatus(o.harness).available;
+  isOptionAvailable = (o: CatalogOption): boolean =>
+    this.harnessStatus(o.harness).available && (!o.auth_env || o.auth_env.some((k) => this.hasCredential(k)));
+
+  /** A forwarded key, or (local executor only) a login the host CLI already has. */
+  private hasCredential(key: string): boolean {
+    return Boolean(this.cfg.providerEnv[key]) || (this.hostCredentials?.has(key) ?? false);
+  }
 
   /**
    * UHP harness objects: `id` is `chrn_<base>`; `base` is the harness family. Plain base ids

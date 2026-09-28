@@ -284,6 +284,12 @@ describe("routing endpoints, feedback and stats", () => {
     expect(store.lockForReap(busy.id, Date.now())).toBe(false);
   });
 
+  it("gates options on their own credentials", () => {
+    const chatgptOnly = DEFAULT_CATALOG.options.find((o) => o.id === "codex:gpt-5.6-luna")!;
+    expect(chatgptOnly.auth_env).toEqual(["CODEX_AUTH_JSON"]);
+    expect(DEFAULT_CATALOG.options.find((o) => o.id === "codex:gpt-6-luna")!.auth_env).not.toContain("CODEX_AUTH_JSON");
+  });
+
   it("rejects absurd timeouts instead of overflowing the timer", async () => {
     expect((await post("/v1/responses", { input: "x", timeout_seconds: 1e9 })).status).toBe(400);
   });

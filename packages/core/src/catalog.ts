@@ -24,6 +24,8 @@ export interface CatalogOption {
   strengths: TaskType[];
   /** One line shown to Jev. Describe capability, never price — Jev is bad at arithmetic. */
   description: string;
+  /** Credentials this option works with, when narrower than the harness's (any one suffices). */
+  auth_env?: string[];
 }
 
 export interface Catalog {
@@ -45,7 +47,7 @@ export const DEFAULT_HARNESSES: Record<HarnessId, HarnessInfo> = {
   codex: {
     id: "codex",
     label: "Codex",
-    auth_env: ["OPENAI_API_KEY", "CODEX_API_KEY"],
+    auth_env: ["OPENAI_API_KEY", "CODEX_API_KEY", "CODEX_AUTH_JSON"],
     efforts: ALL_EFFORTS,
     native_resume: true,
     token_overhead: 1.0,
@@ -111,9 +113,10 @@ export const DEFAULT_OPTIONS: CatalogOption[] = [
     strengths: [...CODING, "research", "writing"],
     description: "Claude Code with a frontier model: hardest refactors, architecture changes, long autonomous coding tasks.",
   },
-  // Codex
+  // Codex — gpt-6-luna/sol need an API key; a ChatGPT login (CODEX_AUTH_JSON) serves gpt-5.6-*.
   {
     id: "codex:gpt-6-luna",
+    auth_env: ["OPENAI_API_KEY", "CODEX_API_KEY"],
     harness: "codex",
     model: "gpt-6-luna",
     tier: 1,
@@ -123,6 +126,7 @@ export const DEFAULT_OPTIONS: CatalogOption[] = [
   },
   {
     id: "codex:gpt-6-sol",
+    auth_env: ["OPENAI_API_KEY", "CODEX_API_KEY"],
     harness: "codex",
     model: "gpt-6-sol",
     tier: 2,
@@ -138,6 +142,26 @@ export const DEFAULT_OPTIONS: CatalogOption[] = [
     price: { input_per_mtok: 10, output_per_mtok: 50 },
     strengths: [...CODING, "research", "data_analysis"],
     description: "Codex with a frontier model: hardest algorithmic, scientific and mathematical coding problems.",
+  },
+  {
+    id: "codex:gpt-5.6-luna",
+    auth_env: ["CODEX_AUTH_JSON"],
+    harness: "codex",
+    model: "gpt-5.6-luna",
+    tier: 1,
+    price: { input_per_mtok: 0.2, output_per_mtok: 1.2 },
+    strengths: ["quick_answer", "ops_shell", "data_analysis"],
+    description: "Codex with a fast small model: well-scoped edits, scripts, extraction and summaries.",
+  },
+  {
+    id: "codex:gpt-5.6-terra",
+    auth_env: ["CODEX_AUTH_JSON"],
+    harness: "codex",
+    model: "gpt-5.6-terra",
+    tier: 2,
+    price: { input_per_mtok: 2, output_per_mtok: 12 },
+    strengths: [...CODING, "data_analysis", "ops_shell"],
+    description: "Codex with a strong model: building features, debugging, code review, data analysis.",
   },
   // OpenCode (OpenRouter)
   {

@@ -1,4 +1,6 @@
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { HarnessId } from "@jev-route/core";
@@ -23,6 +25,21 @@ export class LocalExecutor implements Executor {
     private readonly workspacesDir: string,
     private readonly enableMock: boolean,
   ) {}
+
+  hostCredentials(): Set<string> {
+    const creds = new Set<string>();
+    try {
+      const auth = JSON.parse(readFileSync(join(homedir(), ".codex", "auth.json"), "utf8")) as {
+        auth_mode?: string;
+        OPENAI_API_KEY?: string | null;
+      };
+      if (auth.auth_mode === "chatgpt") creds.add("CODEX_AUTH_JSON");
+      if (auth.OPENAI_API_KEY) creds.add("OPENAI_API_KEY");
+    } catch {
+      /* no codex login on this host */
+    }
+    return creds;
+  }
 
   async installed(): Promise<Record<HarnessId, boolean>> {
     const result = { mock: this.enableMock } as Record<HarnessId, boolean>;

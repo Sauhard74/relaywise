@@ -79,6 +79,15 @@ describe("codex exec --json", () => {
     ]);
   });
 
+  it("installs a ChatGPT login into a private CODEX_HOME", async () => {
+    const auth = JSON.stringify({ auth_mode: "chatgpt", tokens: { refresh_token: "rt-" + "x".repeat(30) }, last_refresh: "2026-09-29T00:00:00Z" });
+    const cmd = codexDriver.build({ ...spec, harness: "codex", env: { CODEX_AUTH_JSON: auth } });
+    expect(cmd.env?.CODEX_HOME).toMatch(/\.jev-route\/codex$/);
+    expect(cmd.env?.CODEX_AUTH_JSON).toBe(""); // not leaked into the harness environment
+    expect(Object.values(cmd.files ?? {})).toEqual([auth]);
+    expect(codexDriver.build({ ...spec, harness: "codex" }).env).toBeUndefined();
+  });
+
   it("maps turn.failed to an error", async () => {
     const events = await feed(codexDriver, [{ type: "turn.failed", error: { message: "quota" } }], 1);
     expect(events).toContainEqual({ type: "error", code: "turn_failed", message: "quota" });

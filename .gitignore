@@ -7,3 +7,4 @@ dist/
 !.env.example
 data/
 coverage/
+docker-compose.override.yml

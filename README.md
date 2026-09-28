@@ -135,6 +135,17 @@ as an upper bound. Add your own tasks to the dataset.
   The `local` executor has no isolation and is for development only.
 - API auth: bearer tokens from `JEV_ROUTE_API_KEYS`, compared in constant time.
 
+## Using subscriptions instead of API keys
+
+- **Claude Code:** `claude setup-token`, then set `CLAUDE_CODE_OAUTH_TOKEN`.
+- **Codex (ChatGPT plan):** create a dedicated login and point the gateway at it —
+  `CODEX_HOME=~/.codex-jev-route codex login`, then `CODEX_AUTH_FILE=~/.codex-jev-route/auth.json`
+  (with compose, mount the folder into the gateway and set `CODEX_AUTH_FILE=/run/codex/auth.json`).
+  The file travels to sandboxes over stdin like any key, and its tokens are redacted from output.
+  A ChatGPT login serves `gpt-5.6-luna`, `gpt-5.6-terra` and `gpt-6-astra`; the router only
+  offers Codex models the configured credential can run. Subscription use is subject to your
+  plan's limits; for production traffic use API keys.
+
 ## Configuration
 
 See [`.env.example`](.env.example). The catalog of options and prices lives in

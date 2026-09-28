@@ -10,6 +10,7 @@ export const PROVIDER_ENV_KEYS = [
   "OPENAI_API_KEY",
   "OPENAI_BASE_URL",
   "CODEX_API_KEY",
+  "CODEX_AUTH_JSON",
   "OPENROUTER_API_KEY",
 ] as const;
 
@@ -40,6 +41,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const num = (k: string, d: number) => (env[k] ? Number(env[k]) : d);
   const providerEnv: Record<string, string> = {};
   for (const k of PROVIDER_ENV_KEYS) if (env[k]) providerEnv[k] = env[k]!;
+  // A ChatGPT login for Codex: the contents of ~/.codex/auth.json (after `codex login`).
+  if (env.CODEX_AUTH_FILE && !providerEnv.CODEX_AUTH_JSON) {
+    try {
+      providerEnv.CODEX_AUTH_JSON = readFileSync(env.CODEX_AUTH_FILE, "utf8").trim();
+    } catch (err) {
+      console.warn(`  WARNING: cannot read CODEX_AUTH_FILE (${(err as Error).message}); Codex ChatGPT login disabled`);
+    }
+  }
 
   return {
     port: num("PORT", 8420),
