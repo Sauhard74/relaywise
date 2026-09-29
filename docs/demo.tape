@@ -25,13 +25,12 @@ Enter
 Type `export PS1='%F{8}~/shop%f %F{6}❯%f ' && rm -rf /private/tmp/shop && mkdir -p /private/tmp/shop && cd /private/tmp/shop && git init -q && printf 'def total(items):\n    return sum(i["price"] * i["qty"] for i in items)\n' > cart.py && git add . && git commit -qm init && clear`
 Enter
 Sleep 1s
-Show
-
-# --- start relay: welcome panel -------------------------------------------------------
+# Start relay before the recording shows, so the first frame is the welcome panel.
 Type "relay"
-Sleep 400ms
 Enter
-Sleep 3s
+Wait+Screen@20s /Ask for a change/
+Show
+Sleep 2s
 
 # --- ask Jev where a task would go (free: nothing runs) ----------------------------
 Type "/route add a discount function to cart.py with input validation"
