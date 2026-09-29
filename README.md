@@ -1,5 +1,7 @@
 # relaywise
 
+[![npm](https://img.shields.io/npm/v/relaywise?color=19c3b1&label=npm%20relaywise)](https://www.npmjs.com/package/relaywise) [![ci](https://github.com/Sauhard74/relaywise/actions/workflows/ci.yml/badge.svg)](https://github.com/Sauhard74/relaywise/actions/workflows/ci.yml) [![license](https://img.shields.io/badge/license-Apache--2.0-19c3b1)](LICENSE)
+
 **One API and a terminal agent for coding agents — every task goes to the right agent, model and effort.**
 
 relaywise runs Claude Code, Codex, OpenCode and Hermes Agent as your product's backend, each
