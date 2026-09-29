@@ -1,6 +1,20 @@
-# relaywise
+# relaywise 🏃 — the right coding agent for every task
 
-[![npm](https://img.shields.io/npm/v/relaywise?color=19c3b1&label=npm%20relaywise)](https://www.npmjs.com/package/relaywise) [![ci](https://github.com/Sauhard74/relaywise/actions/workflows/ci.yml/badge.svg)](https://github.com/Sauhard74/relaywise/actions/workflows/ci.yml) [![license](https://img.shields.io/badge/license-Apache--2.0-19c3b1)](LICENSE)
+<p align="center">
+  <img src="docs/banner.png" alt="relaywise: pass the baton. Every coding task goes to the right agent, model and effort." width="100%" />
+</p>
+
+<p align="center">
+  <a href="https://github.com/Sauhard74/relaywise/actions/workflows/ci.yml"><img src="https://github.com/Sauhard74/relaywise/actions/workflows/ci.yml/badge.svg" alt="ci" /></a>
+  <a href="https://www.npmjs.com/package/relaywise"><img src="https://img.shields.io/npm/v/relaywise?label=npm&color=19c3b1" alt="npm" /></a>
+  <img src="https://img.shields.io/node/v/relaywise?label=node&color=19c3b1" alt="node" />
+  <a href="https://github.com/Sauhard74/relaywise/pkgs/container/relaywise-runtime"><img src="https://img.shields.io/badge/docker-ghcr.io-19c3b1?logo=docker&logoColor=white" alt="docker" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-19c3b1" alt="license" /></a>
+</p>
+
+<p align="center">
+  <img src="docs/demo.gif" alt="relay routing a task in the terminal: route preview, a live agent run, and the diff" width="100%" />
+</p>
 
 **One API and a terminal agent for coding agents — every task goes to the right agent, model and effort.**
 

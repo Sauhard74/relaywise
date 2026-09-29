@@ -294,7 +294,7 @@ async function runTask(ev) {
         if (e.type === "response.created") { current = e.response.id; renderDecision(e.response.metadata.route); $("state").textContent = `${NAMES[e.response.metadata.harness_id] || e.response.metadata.harness_id} is working…`; }
         else if (e.type === "response.output_text.delta") { if (!text) text = line("", ""); text.textContent += e.delta; out.scrollTop = out.scrollHeight; }
         else if (e.type === "response.output_item.done" && e.item.type === "message") text = null;
-        else if (e.type === "response.output_item.done" && e.item.type === "function_call") { text = null; let a = e.item.arguments; try { const p = JSON.parse(a); a = p.command ?? p.file_path ?? p.path ?? a; if (Array.isArray(a)) a = a.join(" "); } catch {} line("tool", `${e.item.name}  ${String(a).slice(0, 120)}`); }
+        else if (e.type === "response.output_item.done" && e.item.type === "function_call") { text = null; let a = e.item.arguments; try { const p = JSON.parse(a); a = p.command ?? p.file_path ?? p.path ?? a; if (Array.isArray(a)) a = a.join(" "); } catch {} line("tool", `${e.item.name}  ${String(a).replace(/\/home\/agent\/workspace\/?/g, "").slice(0, 120)}`); }
         else if (/^response\.(completed|failed|incomplete)$/.test(e.type)) {
           const r = e.response, m = r.metadata, files = m.checkpoint?.files?.length;
           const d = line("end " + "status-" + r.status, `${statusWord(r.status)[0].toUpperCase() + statusWord(r.status).slice(1)} in ${dur(m.duration_ms)} for ${usd(m.cost_usd)}${files ? `, ${files} file${files === 1 ? "" : "s"} changed` : ""}.${r.error ? " " + r.error.message : ""}`);

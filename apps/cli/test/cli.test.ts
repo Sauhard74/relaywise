@@ -42,6 +42,7 @@ describe("formatting", () => {
     expect(toolLine("Bash", JSON.stringify({ command: "npm test" }))).toEqual({ name: "Bash", detail: "npm test" });
     expect(toolLine("shell", JSON.stringify({ command: ["bash", "-lc", "ls"] })).detail).toBe("bash -lc ls");
     expect(toolLine("Edit", JSON.stringify({ file_path: "/w/a.ts", old_string: "x" })).detail).toBe("/w/a.ts");
+    expect(toolLine("Read", JSON.stringify({ file_path: "/home/agent/workspace/src/cart.py" })).detail).toBe("src/cart.py");
   });
 
   it("formats money, clipping and the route line", () => {

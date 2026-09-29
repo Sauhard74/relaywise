@@ -11,6 +11,7 @@ import { patchStats } from "../workspace.ts";
 type Entry =
   | { id: number; kind: "banner"; agents: { name: string; available: boolean }[]; engine: string }
   | { id: number; kind: "user"; text: string }
+  | { id: number; kind: "command"; text: string }
   | { id: number; kind: "route"; decision: RouteDecision }
   | { id: number; kind: "tool"; name: string; detail: string }
   | { id: number; kind: "text"; text: string }
@@ -25,7 +26,13 @@ const EFFORTS = ["low", "medium", "high", "xhigh", "max"];
 const OBJECTIVES = ["cheapest", "balanced", "best"];
 
 export function App({ session, version }: { session: Session; version: string }) {
-  const { exit } = useApp();
+  const { exit: inkExit } = useApp();
+  const [exiting, setExiting] = useState(false);
+  // Clear the prompt box first so the terminal isn't left with a stale frame.
+  const exit = useCallback(() => {
+    setExiting(true);
+    setTimeout(() => inkExit(), 30);
+  }, [inkExit]);
   const [entries, setEntries] = useState<Entry[]>([]);
   const nextId = useRef(0);
   const [input, setInput] = useState("");
@@ -290,7 +297,10 @@ export function App({ session, version }: { session: Session; version: string })
       setInput("");
       setHistory((h) => [...h.filter((x) => x !== line), line]);
       setHistoryIndex(null);
-      if (line.startsWith("/")) void command(line);
+      if (line.startsWith("/")) {
+        push({ kind: "command", text: line });
+        void command(line);
+      }
       else void runTurn(line);
     },
     [command, runTurn, running],
@@ -344,7 +354,7 @@ export function App({ session, version }: { session: Session; version: string })
     <Box flexDirection="column">
       <Static items={entries}>{(e) => <EntryView key={e.id} entry={e} session={session} version={version} />}</Static>
 
-      {running && (
+      {!exiting && running && (
         <Box flexDirection="column" marginLeft={2}>
           {liveTail ? <Markdown text={liveTail} /> : null}
           <Text>
@@ -360,6 +370,8 @@ export function App({ session, version }: { session: Session; version: string })
         </Box>
       )}
 
+      {!exiting && (
+      <>
       <Box borderStyle="round" borderColor={running ? "gray" : ACCENT} paddingX={1} marginTop={1}>
         <Text color={ACCENT}>› </Text>
         <TextInput
@@ -385,6 +397,8 @@ export function App({ session, version }: { session: Session; version: string })
         </Text>
         <Text dimColor>{exitArmed ? "press ctrl+c again to exit" : session.project}</Text>
       </Box>
+      </>
+      )}
     </Box>
   );
 }
@@ -442,6 +456,12 @@ function EntryView({ entry, session, version }: { entry: Entry; session: Session
               {entry.text}
             </Text>
           </Box>
+        </Box>
+      );
+    case "command":
+      return (
+        <Box marginTop={1}>
+          <Text dimColor>› {entry.text}</Text>
         </Box>
       );
     case "route": {

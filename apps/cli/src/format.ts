@@ -41,7 +41,9 @@ export function toolLine(name: string, args: string): { name: string; detail: st
   const pick =
     parsed.command ?? parsed.cmd ?? parsed.file_path ?? parsed.path ?? parsed.filePath ?? parsed.pattern ?? parsed.query ?? parsed.url;
   const detail = Array.isArray(pick) ? pick.join(" ") : typeof pick === "string" ? pick : args === "{}" ? "" : args;
-  return { name: name.replace(/^functions\./, ""), detail: clip(detail, 90) };
+  // Paths inside the sandbox read better relative to the project.
+  const rel = detail.replace(/\/home\/agent\/workspace\/?/g, "") || ".";
+  return { name: name.replace(/^functions\./, ""), detail: clip(rel, 90) };
 }
 
 export function statusGlyph(r: ResponseObject): { glyph: string; color: string; label: string } {
