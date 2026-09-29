@@ -61,12 +61,13 @@ can review with `git diff`.
 |---|---|
 | `relay` | Interactive session in the current directory |
 | `relay -p "task"` | Run one task and exit — for scripts and CI (`--json` for machine-readable output) |
-| `relay up` / `relay down` / `relay logs` | Start, stop or watch the local relaywise service |
+| `relay up` | Start the local relaywise service (asks for keys the first time) |
+| `relay down`, `relay logs` | Stop it, or follow its logs |
 | `relay status` | Show which agents are ready |
 
 Inside a session:
 
-| | |
+| Command | What it does |
 |---|---|
 | `/route <task>` | See where a task would go and why, without running it |
 | `/objective cheapest \| balanced \| best` | What to optimise for |
