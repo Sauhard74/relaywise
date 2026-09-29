@@ -1,4 +1,4 @@
-import type { Difficulty, RouteFeatures, TaskType } from "@jev-route/core";
+import type { Difficulty, RouteFeatures, TaskType } from "@relaywise/core";
 
 /**
  * Keyword fallback used when Jev is unavailable, slow or errors. Deliberately simple and

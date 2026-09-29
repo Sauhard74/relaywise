@@ -1,4 +1,4 @@
-# jev-route agent runtime: one container per session, all harness CLIs + agentd.
+# relaywise agent runtime: one container per session, all harness CLIs + agentd.
 # Build from the repo root:  pnpm build:image   (or: docker compose build)
 
 FROM node:22-bookworm-slim AS agentd
@@ -7,7 +7,7 @@ RUN npm install -g esbuild@0.24.2
 COPY packages/core ./packages/core
 COPY packages/agentd ./packages/agentd
 RUN esbuild packages/agentd/src/cli.ts --bundle --platform=node --target=node22 --format=esm \
-      --alias:@jev-route/core=./packages/core/src/index.ts --outfile=/out/agentd.mjs
+      --alias:@relaywise/core=./packages/core/src/index.ts --outfile=/out/agentd.mjs
 
 FROM node:22-bookworm-slim
 
@@ -38,8 +38,8 @@ RUN printf '#!/bin/sh\nexec node /opt/agentd/agentd.mjs "$@"\n' > /usr/local/bin
 
 RUN useradd --create-home --uid 1001 --shell /bin/bash agent \
  && mkdir -p /home/agent/workspace \
- && git config --system user.name "jev-route agent" \
- && git config --system user.email "agent@jev-route.local" \
+ && git config --system user.name "relaywise agent" \
+ && git config --system user.email "agent@relaywise.local" \
  && git config --system init.defaultBranch main \
  && chown -R agent:agent /home/agent
 

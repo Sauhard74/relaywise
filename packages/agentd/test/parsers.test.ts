@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { RunEvent, RunSpec } from "@jev-route/core";
+import type { RunEvent, RunSpec } from "@relaywise/core";
 import { claudeDriver } from "../src/drivers/claude.ts";
 import { codexDriver } from "../src/drivers/codex.ts";
 import { opencodeDriver } from "../src/drivers/opencode.ts";
@@ -82,7 +82,7 @@ describe("codex exec --json", () => {
   it("installs a ChatGPT login into a private CODEX_HOME", async () => {
     const auth = JSON.stringify({ auth_mode: "chatgpt", tokens: { refresh_token: "rt-" + "x".repeat(30) }, last_refresh: "2026-09-29T00:00:00Z" });
     const cmd = codexDriver.build({ ...spec, harness: "codex", env: { CODEX_AUTH_JSON: auth } });
-    expect(cmd.env?.CODEX_HOME).toMatch(/\.jev-route\/codex$/);
+    expect(cmd.env?.CODEX_HOME).toMatch(/\.relaywise\/codex$/);
     expect(cmd.env?.CODEX_AUTH_JSON).toBe(""); // not leaked into the harness environment
     expect(Object.values(cmd.files ?? {})).toEqual([auth]);
     expect(codexDriver.build({ ...spec, harness: "codex" }).env).toBeUndefined();

@@ -1,4 +1,4 @@
-import type { RunEvent } from "@jev-route/core";
+import type { RunEvent } from "@relaywise/core";
 import { parseJsonLine, promptArg, toText, type Driver } from "../driver.ts";
 
 /** Claude Code headless: `claude -p … --output-format stream-json`. */
@@ -18,7 +18,7 @@ export const claudeDriver: Driver = {
     if (spec.effort) args.push("--effort", spec.effort);
     if (spec.max_turns) args.push("--max-turns", String(spec.max_turns));
     if (spec.harness_session_id) args.push("--resume", spec.harness_session_id);
-    return { cmd: "claude", args, env: { CLAUDE_CODE_ENTRYPOINT: "sdk-jev-route", DISABLE_AUTOUPDATER: "1" } };
+    return { cmd: "claude", args, env: { CLAUDE_CODE_ENTRYPOINT: "sdk-relaywise", DISABLE_AUTOUPDATER: "1" } };
   },
 
   parser() {

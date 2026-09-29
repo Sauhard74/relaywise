@@ -1,6 +1,6 @@
 import type { ResponseObject, RouteDecision } from "./client.ts";
 
-/** jev turquoise. */
+/** relaywise turquoise. */
 export const ACCENT = "#30d5c8";
 export const DIFFICULTY = ["", "trivial", "easy", "moderate", "hard", "very hard"];
 
@@ -24,7 +24,7 @@ export function clip(s: string, n: number): string {
 
 export function routeLine(d: RouteDecision): { head: string; meta: string } {
   const head = `${d.harness} · ${d.model}${d.effort ? ` · ${d.effort}` : ""}`;
-  const via = d.source === "jev" ? `jev ${d.latency_ms}ms` : d.source === "cache" ? "jev (cached)" : d.source;
+  const via = d.source === "jev" ? `Jev ${d.latency_ms}ms` : d.source === "cache" ? "Jev (cached)" : d.source;
   const task = d.features ? `${DIFFICULTY[d.features.difficulty] ?? ""} ${d.features.task_type.replace("_", " ")}` : "";
   const est = d.est_cost_usd ? ` · est ${usd(d.est_cost_usd)}` : "";
   return { head, meta: `${via} · ${task}${est}` };

@@ -2,7 +2,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { RunEvent, RunSpec } from "@jev-route/core";
+import type { RunEvent, RunSpec } from "@relaywise/core";
 import { runHarness } from "../src/run.ts";
 
 process.env.MOCK_PACE_MS = "0";
@@ -78,11 +78,11 @@ describe("runHarness (mock harness, real process)", () => {
     expect(second.events.find((e) => e.type === "text_done")).toMatchObject({ text: expect.stringContaining("(briefed) done: now extend it") });
     expect(second.events.find((e) => e.type === "checkpoint")).toMatchObject({ turn: 2, files: [{ status: "A", path: "lib.txt" }] });
 
-    const memory = readFileSync(join(cwd, ".jev", "MEMORY.md"), "utf8");
+    const memory = readFileSync(join(cwd, ".relay", "MEMORY.md"), "utf8");
     expect(memory).toContain("## Turn 1 — mock · mock-small");
     expect(memory).toContain("## Turn 2 — mock · mock-large");
     expect(memory).toContain("**Files:** A app.txt");
-    expect(existsSync(join(cwd, ".jev", "turns", "0002.md"))).toBe(true);
+    expect(existsSync(join(cwd, ".relay", "turns", "0002.md"))).toBe(true);
 
     const log = execFileSync("git", ["log", "--format=%an|%s"], { cwd, encoding: "utf8" });
     expect(log).toContain("mock/mock-large|turn 2");
@@ -97,10 +97,10 @@ describe("runHarness (mock harness, real process)", () => {
     await collect(spec({ cwd })); // idempotent: block is replaced, not duplicated
     const agents = readFileSync(join(cwd, "AGENTS.md"), "utf8");
     expect(agents).toContain("# Project rules\nUse tabs.");
-    expect(agents.match(/jev-route:start/g)).toHaveLength(1);
+    expect(agents.match(/relaywise:start/g)).toHaveLength(1);
     expect(agents).toContain("Start your final message with one or two sentences");
-    expect(readFileSync(join(cwd, "CLAUDE.md"), "utf8")).toContain("@.jev/SKILL.md");
-    expect(readFileSync(join(cwd, ".jev", "SKILL.md"), "utf8")).toContain("Session ledger");
+    expect(readFileSync(join(cwd, "CLAUDE.md"), "utf8")).toContain("@.relay/SKILL.md");
+    expect(readFileSync(join(cwd, ".relay", "SKILL.md"), "utf8")).toContain("Session ledger");
   });
 
   it("summarises a turn from the agent's final message, not its progress chatter", async () => {

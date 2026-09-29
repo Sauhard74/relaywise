@@ -66,7 +66,7 @@ export function App({ session, version }: { session: Session; version: string })
       })
       .catch((err: Error) => {
         push({ kind: "banner", agents: [], engine: "offline" });
-        push({ kind: "error", message: `${err.message}. Start it with \`docker compose up -d\` or set JEV_ROUTE_URL.` });
+        push({ kind: "error", message: `${err.message}. Start it with \`docker compose up -d\` or set RELAYWISE_URL.` });
       });
   }, [push, session]);
 
@@ -396,7 +396,7 @@ function EntryView({ entry, session, version }: { entry: Entry; session: Session
         <Box borderStyle="round" borderColor={ACCENT} paddingX={1} flexDirection="column" marginBottom={1}>
           <Text>
             <Text color={ACCENT} bold>
-              ✻ jev
+              ✻ relaywise
             </Text>
             <Text dimColor> v{version} · every request routed to the right agent</Text>
           </Text>
@@ -454,7 +454,7 @@ function EntryView({ entry, session, version }: { entry: Entry; session: Session
             {entry.decision.handoff ? <Text color="yellow"> ↪ handoff</Text> : null}
             <Text dimColor>  {meta}</Text>
           </Text>
-          {entry.decision.fallback_reason ? <Text dimColor>  jev unavailable, used keyword fallback</Text> : null}
+          {entry.decision.fallback_reason ? <Text dimColor>  Jev unavailable, used keyword fallback</Text> : null}
         </Box>
       );
     }

@@ -35,7 +35,7 @@ export interface RunSpec {
   harness_session_id?: string;
   /**
    * The previous turn ran on another harness/model (or this harness can't resume): brief the
-   * agent from the session ledger (.jev/MEMORY.md + git history) before the prompt.
+   * agent from the session ledger (.relay/MEMORY.md + git history) before the prompt.
    */
   handoff?: boolean;
   /** Commit the turn and append it to the session ledger. Default true. */

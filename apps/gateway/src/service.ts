@@ -11,8 +11,8 @@ import {
   type Objective,
   type RouteDecision,
   type RunSpec,
-} from "@jev-route/core";
-import { RouteError, heuristicFeatures, type RouteRequest, type Router } from "@jev-route/router";
+} from "@relaywise/core";
+import { RouteError, heuristicFeatures, type RouteRequest, type Router } from "@relaywise/router";
 import type { Config } from "./config.ts";
 import type { Executor, RunHandle } from "./executors/types.ts";
 import { ResponseBuilder, newId, type ErrorInfo, type OutputItem, type SseEvent, type Usage } from "./responses.ts";
@@ -118,7 +118,7 @@ export class GatewayService {
 
   harnessStatus(id: HarnessId): { available: boolean; missing: string[] } {
     const missing: string[] = [];
-    if (id === "mock" && !this.cfg.enableMock) missing.push("disabled (set JEV_ROUTE_ENABLE_MOCK=1)");
+    if (id === "mock" && !this.cfg.enableMock) missing.push("disabled (set RELAYWISE_ENABLE_MOCK=1)");
     else if (!this.installed?.[id]) missing.push(this.executor.kind === "docker" ? "CLI missing from sandbox image" : "CLI not installed on this host");
     const auth = this.cfg.catalog.harnesses[id].auth_env;
     // Local mode may use the host's CLI logins, so only Docker requires forwarded keys.
@@ -279,7 +279,7 @@ export class GatewayService {
       });
     } catch (err) {
       if (err instanceof RouteError) {
-        throw new ApiError(422, "invalid_request_error", `jevroute.${err.code}`, err.message, null, err.detail);
+        throw new ApiError(422, "invalid_request_error", `relaywise.${err.code}`, err.message, null, err.detail);
       }
       throw err;
     }
@@ -299,7 +299,7 @@ export class GatewayService {
       const prior = this.store.getByIdempotencyKey(idemKey);
       if (prior) {
         if (prior.request_hash !== requestHash) {
-          throw new ApiError(409, "invalid_request_error", "jevroute.idempotency_key_reused", "Idempotency-Key was already used with a different request body");
+          throw new ApiError(409, "invalid_request_error", "relaywise.idempotency_key_reused", "Idempotency-Key was already used with a different request body");
         }
         return this.deliver(prior.id, body);
       }
@@ -321,7 +321,7 @@ export class GatewayService {
         throw new ApiError(409, "invalid_request_error", "harness_mismatch", `session runs '${s.requested_harness}', not '${requested}'`, "metadata.harness_id");
       }
       if (project && project !== s.project_id) {
-        throw new ApiError(409, "invalid_request_error", "jevroute.project_mismatch", `this session belongs to project '${s.project_id ?? "(none)"}'`, "metadata.project_id");
+        throw new ApiError(409, "invalid_request_error", "relaywise.project_mismatch", `this session belongs to project '${s.project_id ?? "(none)"}'`, "metadata.project_id");
       }
       if (!this.store.claimSession(s.id)) {
         const replay = idemKey ? this.store.getByIdempotencyKey(idemKey) : undefined;
@@ -642,7 +642,7 @@ export class GatewayService {
   delete(id: string): { id: string; object: string; deleted: boolean } {
     const row = this.store.getResponse(id);
     if (!row) throw new ApiError(404, "invalid_request_error", "response_not_found", `no response '${id}'`);
-    if (row.status === "in_progress") throw new ApiError(409, "invalid_request_error", "jevroute.response_in_progress", "cancel the response before deleting it");
+    if (row.status === "in_progress") throw new ApiError(409, "invalid_request_error", "relaywise.response_in_progress", "cancel the response before deleting it");
     this.store.deleteResponse(id);
     return { id, object: "response.deleted", deleted: true };
   }
@@ -726,7 +726,7 @@ export class GatewayService {
 
   getProject(id: string) {
     const p = this.store.getProject(id);
-    if (!p) throw new ApiError(404, "invalid_request_error", "jevroute.project_not_found", `no project '${id}'`);
+    if (!p) throw new ApiError(404, "invalid_request_error", "relaywise.project_not_found", `no project '${id}'`);
     return {
       id: p.id,
       object: "project",
@@ -737,12 +737,12 @@ export class GatewayService {
     };
   }
 
-  /** The project's ledger (.jev/MEMORY.md), or one turn's full record. */
+  /** The project's ledger (.relay/MEMORY.md), or one turn's full record. */
   async projectMemory(id: string, turn?: number): Promise<string> {
     this.getProject(id);
-    const path = turn ? `.jev/turns/${String(turn).padStart(4, "0")}.md` : ".jev/MEMORY.md";
+    const path = turn ? `.relay/turns/${String(turn).padStart(4, "0")}.md` : ".relay/MEMORY.md";
     const text = await this.executor.readProjectFile(id, path);
-    if (text === null) throw new ApiError(404, "invalid_request_error", "jevroute.memory_not_found", `no ${turn ? `turn ${turn}` : "memory"} yet for project '${id}'`);
+    if (text === null) throw new ApiError(404, "invalid_request_error", "relaywise.memory_not_found", `no ${turn ? `turn ${turn}` : "memory"} yet for project '${id}'`);
     return text;
   }
 
@@ -759,7 +759,7 @@ export class GatewayService {
       const [head = "", changed = "0"] = out.toString("utf8").trim().split(/\s+/);
       return { id, object: "project.sync", head, files_changed: Number(changed) };
     } catch (err) {
-      throw new ApiError(422, "invalid_request_error", "jevroute.sync_failed", `sync failed: ${(err as Error).message.slice(0, 300)}`);
+      throw new ApiError(422, "invalid_request_error", "relaywise.sync_failed", `sync failed: ${(err as Error).message.slice(0, 300)}`);
     } finally {
       this.store.releaseProject(id);
     }
@@ -772,7 +772,7 @@ export class GatewayService {
     const out = await this.executor
       .projectShell(id, `git show --binary --no-color --format= ${commit} -- . ${DIFF_EXCLUDES}`)
       .catch(() => null);
-    if (out === null) throw new ApiError(404, "invalid_request_error", "jevroute.commit_not_found", `no commit ${commit} in project '${id}'`);
+    if (out === null) throw new ApiError(404, "invalid_request_error", "relaywise.commit_not_found", `no commit ${commit} in project '${id}'`);
     return out.toString("utf8");
   }
 
@@ -810,9 +810,9 @@ export class GatewayService {
 
 const PROJECT_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
 
-/** Paths that belong to jev-route, or are build/test artifacts, not the user's changes. */
+/** Paths that belong to relaywise, or are build/test artifacts, not the user's changes. */
 const DIFF_EXCLUDES = [
-  ".jev",
+  ".relay",
   "AGENTS.md",
   "CLAUDE.md",
   ...["__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", "node_modules", ".venv", ".next", ".turbo"].map(
@@ -825,7 +825,7 @@ const DIFF_EXCLUDES = [
   .join(" ");
 
 const SYNC_SCRIPT = String.raw`set -euo pipefail
-export GIT_AUTHOR_NAME=jev-route GIT_AUTHOR_EMAIL=agent@jev-route.local GIT_COMMITTER_NAME=jev-route GIT_COMMITTER_EMAIL=agent@jev-route.local
+export GIT_AUTHOR_NAME=relaywise GIT_AUTHOR_EMAIL=agent@relaywise.local GIT_COMMITTER_NAME=relaywise GIT_COMMITTER_EMAIL=agent@relaywise.local
 tmp=$(mktemp -d)
 lists=$(mktemp -d)
 trap 'rm -rf "$tmp" "$lists"' EXIT
@@ -834,12 +834,12 @@ tar --no-same-owner --warning=no-unknown-keyword -xf - -C "$tmp" 2>/dev/null || 
 [ -d .git ] || git init -q -b main
 (cd "$tmp" && find . \( -type f -o -type l \) | sed 's|^\./||' | sort) > "$lists/upload"
 git ls-files | sort > "$lists/tracked"
-comm -23 "$lists/tracked" "$lists/upload" | grep -vE '^(\.jev/|AGENTS\.md$|CLAUDE\.md$)' | while IFS= read -r f; do rm -f -- "$f"; done || true
+comm -23 "$lists/tracked" "$lists/upload" | grep -vE '^(\.relay/|AGENTS\.md$|CLAUDE\.md$)' | while IFS= read -r f; do rm -f -- "$f"; done || true
 cp -a "$tmp"/. ./
 grep -qxF '.harness/' .gitignore 2>/dev/null || echo '.harness/' >> .gitignore
 git add -A
-changed=$(git diff --cached --name-only | grep -cvE '^(\.jev/|AGENTS\.md$|CLAUDE\.md$)' || true)
-git diff --cached --quiet || git commit -q -m "jev-route: sync from local"
+changed=$(git diff --cached --name-only | grep -cvE '^(\.relay/|AGENTS\.md$|CLAUDE\.md$)' || true)
+git diff --cached --quiet || git commit -q -m "relaywise: sync from local"
 git rev-parse --short HEAD 2>/dev/null || echo none
 echo "$changed"`;
 
@@ -853,7 +853,7 @@ function requestedProject(body: CreateBody, header: string | undefined): string 
 }
 
 function projectBusy(id: string): ApiError {
-  return new ApiError(409, "invalid_request_error", "jevroute.project_busy", `a turn is already running in project '${id}'`, "metadata.project_id");
+  return new ApiError(409, "invalid_request_error", "relaywise.project_busy", `a turn is already running in project '${id}'`, "metadata.project_id");
 }
 
 export function normalizeHarnessId(id: string): string {

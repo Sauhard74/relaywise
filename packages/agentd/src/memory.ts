@@ -1,5 +1,5 @@
 /**
- * Session ledger: the workspace is a git repo, every turn is a commit, and `.jev/` holds a
+ * Session ledger: the workspace is a git repo, every turn is a commit, and `.relay/` holds a
  * human- and agent-readable record of the session. When a turn moves to a different harness
  * or model, the new agent is briefed from this ledger instead of relying on its own memory.
  */
@@ -9,18 +9,18 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 
 const run = promisify(execFile);
-const LEDGER_DIR = ".jev";
+const LEDGER_DIR = ".relay";
 const TURNS_DIR = join(LEDGER_DIR, "turns");
 const MEMORY_FILE = join(LEDGER_DIR, "MEMORY.md");
 /** Never committed: harness configs and credentials live here. */
 const IGNORED = [".harness/"];
 const SKILL_FILE = join(LEDGER_DIR, "SKILL.md");
-const BLOCK_START = "<!-- jev-route:start (managed, edits are overwritten) -->";
-const BLOCK_END = "<!-- jev-route:end -->";
+const BLOCK_START = "<!-- relaywise:start (managed, edits are overwritten) -->";
+const BLOCK_END = "<!-- relaywise:end -->";
 const BRIEFING_CHARS = 8_000;
 
-/** What every agent in a jev-route session should know. Kept short: it rides along every turn. */
-export const SKILL = `# Working in a jev-route session
+/** What every agent in a relaywise session should know. Kept short: it rides along every turn. */
+export const SKILL = `# Working in a relaywise session
 
 Several agents (Claude Code, Codex, OpenCode, Hermes) may take turns on this workspace — a
 router picks the best one for each request. Shared memory lives in files, not in your context.
@@ -34,7 +34,7 @@ router picks the best one for each request. Shared memory lives in files, not in
   tests"), read \`${MEMORY_FILE}\` and the relevant commits before acting.
 
 Rules:
-1. Leave your changes uncommitted — jev-route commits them at the end of your turn. Never rewrite
+1. Leave your changes uncommitted — relaywise commits them at the end of your turn. Never rewrite
    history (no \`reset\`, \`rebase\`, \`commit --amend\` or force operations).
 2. Do not edit anything under \`${LEDGER_DIR}/\`; it is written for you.
 3. **Start your final message with one or two sentences saying what you did and what is left.**
@@ -67,7 +67,7 @@ export interface Checkpoint {
 async function git(cwd: string, args: string[]): Promise<string> {
   const { stdout } = await run(
     "git",
-    ["-c", "user.name=jev-route", "-c", "user.email=agent@jev-route.local", "-c", "commit.gpgsign=false", ...args],
+    ["-c", "user.name=relaywise", "-c", "user.email=agent@relaywise.local", "-c", "commit.gpgsign=false", ...args],
     { cwd, maxBuffer: 16 * 1024 * 1024 },
   );
   return stdout;
@@ -89,7 +89,7 @@ export async function ensureRepo(cwd: string): Promise<void> {
   if (!isRepo || missing.length || instructionsChanged) {
     // Baseline, so turn diffs show only what agents changed.
     await git(cwd, ["add", "-A"]);
-    await git(cwd, ["commit", "-q", "--allow-empty", "-m", "jev-route: workspace baseline"]);
+    await git(cwd, ["commit", "-q", "--allow-empty", "-m", "relaywise: workspace baseline"]);
   }
 }
 
@@ -175,7 +175,7 @@ export async function recordTurn(cwd: string, t: TurnRecord): Promise<Checkpoint
     );
     const memoryPath = join(cwd, MEMORY_FILE);
     const memory = await readFile(memoryPath, "utf8").catch(
-      () => "# Session memory\n\nMaintained by jev-route. Every turn is also a git commit (`git log --oneline`).\n\n",
+      () => "# Session memory\n\nMaintained by relaywise. Every turn is also a git commit (`git log --oneline`).\n\n",
     );
     await writeFile(memoryPath, memory + entry);
 

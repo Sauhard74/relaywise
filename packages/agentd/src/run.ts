@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { createInterface } from "node:readline";
-import { makeRedactor, type HarnessId, type RunEvent, type RunSpec } from "@jev-route/core";
+import { makeRedactor, type HarnessId, type RunEvent, type RunSpec } from "@relaywise/core";
 import type { Driver } from "./driver.ts";
 import { briefing, ensureRepo, recordTurn } from "./memory.ts";
 import { claudeDriver } from "./drivers/claude.ts";

@@ -7,7 +7,7 @@ import {
   type Effort,
   type Objective,
   type RouteFeatures,
-} from "@jev-route/core";
+} from "@relaywise/core";
 
 /** Observed outcomes for one option on one task type. */
 export interface OptionStats {

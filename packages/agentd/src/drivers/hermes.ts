@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { RunEvent } from "@jev-route/core";
+import type { RunEvent } from "@relaywise/core";
 import { promptArg, type Driver } from "../driver.ts";
 
 /**

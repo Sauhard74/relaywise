@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
-import type { HarnessId, RunEvent } from "@jev-route/core";
+import type { HarnessId, RunEvent } from "@relaywise/core";
 import { runShell } from "./local.ts";
 import { SandboxError, type Executor, type RunHandle, type RunStatus, type Sandbox } from "./types.ts";
 
@@ -55,7 +55,7 @@ export class DockerExecutor implements Executor {
         "--name",
         name,
         "--label",
-        `jev-route.session=${sessionId}`,
+        `relaywise.session=${sessionId}`,
         "--cpus",
         this.opts.cpus,
         "--memory",
@@ -206,13 +206,13 @@ export class DockerExecutor implements Executor {
 }
 
 function containerName(sessionId: string): string {
-  return `jev-route-${sessionId.replace(/[^\w.-]/g, "")}`;
+  return `relaywise-${sessionId.replace(/[^\w.-]/g, "")}`;
 }
 
 function projectVolume(projectId: string): string {
-  return `jev-route-proj-${projectId.replace(/[^\w.-]/g, "")}`;
+  return `relaywise-proj-${projectId.replace(/[^\w.-]/g, "")}`;
 }
 
 function volumeName(sessionId: string): string {
-  return `jev-route-${sessionId.replace(/[^\w.-]/g, "")}`;
+  return `relaywise-${sessionId.replace(/[^\w.-]/g, "")}`;
 }

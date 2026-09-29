@@ -6,7 +6,7 @@
  * latency, and estimated spend vs always running the most capable option.
  */
 import { readFileSync } from "node:fs";
-import { DEFAULT_CATALOG, type Difficulty, type Objective, type TaskType } from "@jev-route/core";
+import { DEFAULT_CATALOG, type Difficulty, type Objective, type TaskType } from "@relaywise/core";
 import { JevClient, Router } from "../src/index.ts";
 
 interface Case {

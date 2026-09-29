@@ -1,5 +1,5 @@
 {
-  "name": "@jev-route/agentd",
+  "name": "@relaywise/agentd",
   "version": "0.1.0",
   "type": "module",
   "exports": { ".": "./src/index.ts" },
@@ -7,6 +7,6 @@
   "scripts": {
     "build": "esbuild src/cli.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/agentd.mjs"
   },
-  "dependencies": { "@jev-route/core": "workspace:*" },
+  "dependencies": { "@relaywise/core": "workspace:*" },
   "devDependencies": { "esbuild": "^0.24.0" }
 }

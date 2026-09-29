@@ -1,4 +1,4 @@
-import type { RunEvent, RunSpec } from "@jev-route/core";
+import type { RunEvent, RunSpec } from "@relaywise/core";
 
 export interface Command {
   cmd: string;

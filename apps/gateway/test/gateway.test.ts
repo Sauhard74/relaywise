@@ -2,8 +2,8 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { DEFAULT_CATALOG } from "@jev-route/core";
-import { JevClient, Router } from "@jev-route/router";
+import { DEFAULT_CATALOG } from "@relaywise/core";
+import { JevClient, Router } from "@relaywise/router";
 import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
 import { LocalExecutor } from "../src/executors/local.ts";
@@ -43,10 +43,10 @@ let store: Store;
 beforeAll(async () => {
   process.env.MOCK_PACE_MS = "0";
   const cfg = loadConfig({
-    JEV_ROUTE_EXECUTOR: "local",
-    JEV_ROUTE_ENABLE_MOCK: "1",
-    JEV_ROUTE_DB: ":memory:",
-    JEV_ROUTE_WORKSPACES: mkdtempSync(join(tmpdir(), "jr-ws-")),
+    RELAYWISE_EXECUTOR: "local",
+    RELAYWISE_ENABLE_MOCK: "1",
+    RELAYWISE_DB: ":memory:",
+    RELAYWISE_WORKSPACES: mkdtempSync(join(tmpdir(), "jr-ws-")),
     TYPESAFE_API_KEY: "ts-key",
   });
   cfg.catalog = { ...DEFAULT_CATALOG, options: DEFAULT_CATALOG.options.filter((o) => o.harness === "mock") };
@@ -91,7 +91,7 @@ describe("discovery and auth", () => {
     expect(res.headers.get("uhp-version")).toBe("2026-09-12");
     const d = await res.json();
     expect(d).toMatchObject({ object: "uhp.discovery", protocol: "uhp", default_version: "2026-09-12", conformance_class: "core" });
-    expect(d.capabilities).toMatchObject({ streaming: true, cancellation: true, "jevroute.auto_routing": true });
+    expect(d.capabilities).toMatchObject({ streaming: true, cancellation: true, "relaywise.auto_routing": true });
   });
 
   it("rejects missing keys with the error envelope", async () => {
@@ -204,7 +204,7 @@ describe("POST /v1/responses", () => {
     const res = await post("/v1/responses", { input: "anything", routing: { max_cost_usd: 1e-9 } });
     expect(res.status).toBe(422);
     const body = await res.json();
-    expect(body.error.code).toBe("jevroute.budget_exceeded");
+    expect(body.error.code).toBe("relaywise.budget_exceeded");
     expect(body.error.detail.cheapest_option).toBeTruthy();
   });
 
@@ -303,7 +303,7 @@ describe("projects: memory that outlives sessions", () => {
     const running = await (await post("/v1/responses", { input: "MOCK_SLOW work", background: true, metadata: { project_id: "busy" } })).json();
     const clash = await post("/v1/responses", { input: "other", metadata: { project_id: "busy" } });
     expect(clash.status).toBe(409);
-    expect((await clash.json()).error.code).toBe("jevroute.project_busy");
+    expect((await clash.json()).error.code).toBe("relaywise.project_busy");
     await post(`/v1/responses/${running.id}/cancel`, {});
     const after = await post("/v1/responses", { input: "now it's free", metadata: { project_id: "busy" } });
     expect(after.status).toBe(200);
@@ -314,7 +314,7 @@ describe("projects: memory that outlives sessions", () => {
     const s1 = await (await post("/v1/responses", { input: "x", metadata: { project_id: "p1" } })).json();
     const res = await post("/v1/responses", { input: "y", previous_response_id: s1.id, metadata: { project_id: "p2" } });
     expect(res.status).toBe(409);
-    expect((await res.json()).error.code).toBe("jevroute.project_mismatch");
+    expect((await res.json()).error.code).toBe("relaywise.project_mismatch");
   });
 
   it("syncs a local tree in and hands back only the agent's changes as a patch", async () => {
@@ -337,7 +337,7 @@ describe("projects: memory that outlives sessions", () => {
     const turn = await (await post("/v1/responses", { input: "add MOCK_WRITE c.txt", metadata: { project_id: "synced" } })).json();
     const patch = await (await get(`/v1/projects/synced/diff?commit=${turn.metadata.checkpoint.commit}`)).text();
     expect(patch).toContain("c.txt");
-    expect(patch).not.toContain(".jev/");
+    expect(patch).not.toContain(".relay/");
     expect(patch).not.toContain("b.txt");
     execFileSync("git", ["apply"], { cwd: local, input: patch });
     expect(execFileSync("cat", ["c.txt"], { cwd: local, encoding: "utf8" })).toBe("written by mock-small\n");

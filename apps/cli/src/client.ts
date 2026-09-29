@@ -1,4 +1,4 @@
-/** Thin client for the jev-route gateway. */
+/** Thin client for the relaywise gateway. */
 
 export interface RouteDecision {
   harness: string;

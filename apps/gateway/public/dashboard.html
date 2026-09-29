@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>jev</title>
+<title>relaywise</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -149,7 +149,7 @@
   <header>
     <div class="top">
       <div class="brand">
-        <h1>jev<span>.</span></h1>
+        <h1>relaywise<span>.</span></h1>
         <p>Every task goes to the agent, model and effort that fit it.</p>
       </div>
       <div>
@@ -161,7 +161,7 @@
 
   <div class="connect" id="connect" role="alert">
     <span>This gateway needs an API key.</span>
-    <input id="key" type="password" placeholder="Paste a key from JEV_ROUTE_API_KEYS" autocomplete="off" aria-label="API key" />
+    <input id="key" type="password" placeholder="Paste a key from RELAYWISE_API_KEYS" autocomplete="off" aria-label="API key" />
     <button class="btn" id="saveKey">Connect</button>
   </div>
 
@@ -170,7 +170,7 @@
       <label class="sr" for="prompt">Task</label>
       <textarea id="prompt" placeholder="Describe a task — “add input validation to the signup handler and test it”"></textarea>
       <div class="controls">
-        <label class="field">Agent <select id="harness"><option value="auto">Let Jev choose</option></select></label>
+        <label class="field">Agent <select id="harness"><option value="auto">Choose for me</option></select></label>
         <div class="seg" role="radiogroup" aria-label="Optimise for">
           <label><input type="radio" name="obj" value="cheapest" /><span>Cheapest</span></label>
           <label><input type="radio" name="obj" value="balanced" checked /><span>Balanced</span></label>
@@ -187,7 +187,7 @@
       </div>
     </form>
     <div class="decision" id="decision">
-      <p class="empty">Jev reads the task, scores every agent that can run it, and picks one. Preview a route to see its reasoning before spending anything.</p>
+      <p class="empty">Jev reads the task, relaywise scores every agent that can run it, and picks one. Preview a route to see the reasoning before spending anything.</p>
     </div>
   </div>
   <div class="stream" id="stream" hidden aria-live="polite"></div>
@@ -209,7 +209,7 @@
     </div>
   </section>
 
-  <footer>Also available in your terminal: run <b>jev</b> inside any repo.</footer>
+  <footer>Also available in your terminal: run <b>relay</b> inside any repo.</footer>
 </div>
 
 <script>
@@ -225,7 +225,7 @@ const statusWord = (s) => ({ completed: "done", failed: "failed", cancelled: "st
 const shortModel = (m) => String(m || "").split("/").pop();
 const ago = (sec) => { const d = Date.now() / 1000 - sec; return d < 60 ? "just now" : d < 3600 ? Math.floor(d / 60) + " min ago" : d < 86400 ? Math.floor(d / 3600) + " h ago" : new Date(sec * 1000).toLocaleDateString(); };
 
-let key = ""; try { key = localStorage.getItem("jevKey") || ""; } catch {}
+let key = ""; try { key = localStorage.getItem("relaywiseKey") || ""; } catch {}
 let runs = [], selected = null, current = null, harnesses = [];
 const headers = () => ({ "Content-Type": "application/json", ...(key ? { Authorization: "Bearer " + key } : {}) });
 async function api(path, init = {}) {
@@ -235,7 +235,7 @@ async function api(path, init = {}) {
   if (!res.ok) throw new Error(body?.error?.message || res.statusText);
   return body;
 }
-$("saveKey").onclick = () => { key = $("key").value.trim(); try { localStorage.setItem("jevKey", key); } catch {} $("connect").classList.remove("on"); refresh(); };
+$("saveKey").onclick = () => { key = $("key").value.trim(); try { localStorage.setItem("relaywiseKey", key); } catch {} $("connect").classList.remove("on"); refresh(); };
 
 function settings() {
   const b = { input: $("prompt").value.trim(), metadata: { harness_id: $("harness").value }, routing: { objective: document.querySelector("input[name=obj]:checked").value } };
@@ -319,7 +319,7 @@ function renderHeader(h, stats) {
   const eng = auto?.routing?.engine;
   $("engine").innerHTML = eng === "jev" ? `Routing with <b>${esc(auto.routing.model)}</b>` : `Routing with <b>keyword rules</b>, set TYPESAFE_API_KEY for Jev`;
   const sel = $("harness"), cur = sel.value;
-  sel.innerHTML = `<option value="auto">Let Jev choose</option>` + harnesses.filter((x) => x.base !== "auto").map((x) =>
+  sel.innerHTML = `<option value="auto">Choose for me</option>` + harnesses.filter((x) => x.base !== "auto").map((x) =>
     `<option value="${esc(x.base)}" ${x.available ? "" : "disabled"}>${esc(NAMES[x.base] || x.name)}${x.available ? "" : " (not set up)"}</option>`).join("");
   sel.value = cur || "auto";
 }
@@ -369,7 +369,7 @@ function renderBoard() {
 
 function renderSummary(stats) {
   const t = stats.totals || {}, s = stats.savings;
-  if (!t.runs) { $("summary").innerHTML = "Nothing has run yet. Describe a task above, or run <b>jev</b> in a repo."; return; }
+  if (!t.runs) { $("summary").innerHTML = "Nothing has run yet. Describe a task above, or run <b>relay</b> in a repo."; return; }
   const rate = Math.round(100 * (t.completed || 0) / t.runs);
   const saved = s && s.runs_counted && s.saved_usd > 0 ? ` Routing saved <strong class="saved">${usd(s.saved_usd)}</strong> compared with sending every task to the top tier.` : "";
   $("summary").innerHTML = `<strong>${t.runs}</strong> task${t.runs === 1 ? "" : "s"} run, ${rate}% finished, <strong>${usd(t.cost_usd || 0)}</strong> spent.${saved}`;

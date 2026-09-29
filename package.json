@@ -1,5 +1,5 @@
 {
-  "name": "jev-route",
+  "name": "relaywise",
   "private": true,
   "version": "0.1.0",
   "description": "One API for agent harnesses (Claude Code, Codex, OpenCode, Hermes) with Jev picking the right harness \u00d7 model \u00d7 effort per task.",
@@ -12,14 +12,14 @@
   "scripts": {
     "dev": "tsx watch apps/gateway/src/main.ts",
     "start": "tsx apps/gateway/src/main.ts",
-    "build:agentd": "pnpm --filter @jev-route/agentd build",
-    "build:image": "docker build -t jev-route/agent-runtime:latest -f docker/agent-runtime/Dockerfile .",
+    "build:agentd": "pnpm --filter @relaywise/agentd build",
+    "build:image": "docker build -t relaywise/agent-runtime:latest -f docker/agent-runtime/Dockerfile .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "eval:router": "tsx packages/router/eval/run.ts",
-    "build:cli": "pnpm --filter @jev-route/cli build",
-    "jev": "node apps/cli/dist/jev.mjs"
+    "build:cli": "pnpm --filter @relaywise/cli build",
+    "relay": "node apps/cli/dist/relay.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

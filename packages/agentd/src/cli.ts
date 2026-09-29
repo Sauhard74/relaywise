@@ -9,7 +9,7 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { RunSpec } from "@jev-route/core";
+import type { RunSpec } from "@relaywise/core";
 import { runHarness } from "./run.ts";
 
 const STATE_DIR = process.env.AGENTD_STATE_DIR ?? join(tmpdir(), "agentd");

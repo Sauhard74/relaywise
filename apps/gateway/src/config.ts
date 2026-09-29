@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { DEFAULT_CATALOG, type Catalog } from "@jev-route/core";
+import { DEFAULT_CATALOG, type Catalog } from "@relaywise/core";
 
 /** Provider credentials forwarded into sandboxes (only when set). */
 export const PROVIDER_ENV_KEYS = [
@@ -53,24 +53,24 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   return {
     port: num("PORT", 8420),
     host: env.HOST ?? "127.0.0.1",
-    apiKeys: (env.JEV_ROUTE_API_KEYS ?? "").split(",").map((s) => s.trim()).filter(Boolean),
-    executor: env.JEV_ROUTE_EXECUTOR === "local" ? "local" : "docker",
-    dockerImage: env.JEV_ROUTE_IMAGE ?? "jev-route/agent-runtime:latest",
-    dockerNetwork: env.JEV_ROUTE_CONTAINER_NETWORK ?? "bridge",
-    containerCpus: env.JEV_ROUTE_CONTAINER_CPUS ?? "2",
-    containerMemory: env.JEV_ROUTE_CONTAINER_MEMORY ?? "4g",
-    dbPath: resolve(env.JEV_ROUTE_DB ?? "data/jev-route.db"),
-    workspacesDir: resolve(env.JEV_ROUTE_WORKSPACES ?? "data/workspaces"),
+    apiKeys: (env.RELAYWISE_API_KEYS ?? "").split(",").map((s) => s.trim()).filter(Boolean),
+    executor: env.RELAYWISE_EXECUTOR === "local" ? "local" : "docker",
+    dockerImage: env.RELAYWISE_IMAGE ?? "relaywise/agent-runtime:latest",
+    dockerNetwork: env.RELAYWISE_CONTAINER_NETWORK ?? "bridge",
+    containerCpus: env.RELAYWISE_CONTAINER_CPUS ?? "2",
+    containerMemory: env.RELAYWISE_CONTAINER_MEMORY ?? "4g",
+    dbPath: resolve(env.RELAYWISE_DB ?? "data/relaywise.db"),
+    workspacesDir: resolve(env.RELAYWISE_WORKSPACES ?? "data/workspaces"),
     typesafeApiKey: env.TYPESAFE_API_KEY || undefined,
     typesafeBaseUrl: env.TYPESAFE_BASE_URL || undefined,
     jevModel: env.JEV_MODEL ?? "jev-latest",
     jevDeadlineMs: num("JEV_DEADLINE_MS", 900),
-    enableMock: env.JEV_ROUTE_ENABLE_MOCK === "1",
-    defaultTimeoutMs: num("JEV_ROUTE_RUN_TIMEOUT_MS", 30 * 60_000),
-    containerIdleMs: num("JEV_ROUTE_CONTAINER_IDLE_MS", 10 * 60_000),
-    sessionRetentionMs: num("JEV_ROUTE_SESSION_RETENTION_MS", 24 * 60 * 60_000),
+    enableMock: env.RELAYWISE_ENABLE_MOCK === "1",
+    defaultTimeoutMs: num("RELAYWISE_RUN_TIMEOUT_MS", 30 * 60_000),
+    containerIdleMs: num("RELAYWISE_CONTAINER_IDLE_MS", 10 * 60_000),
+    sessionRetentionMs: num("RELAYWISE_SESSION_RETENTION_MS", 24 * 60 * 60_000),
     providerEnv,
-    catalog: env.JEV_ROUTE_CATALOG ? loadCatalog(env.JEV_ROUTE_CATALOG) : DEFAULT_CATALOG,
+    catalog: env.RELAYWISE_CATALOG ? loadCatalog(env.RELAYWISE_CATALOG) : DEFAULT_CATALOG,
   };
 }
 

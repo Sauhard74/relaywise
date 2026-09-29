@@ -1,7 +1,7 @@
 {
-  "name": "@jev-route/router",
+  "name": "@relaywise/router",
   "version": "0.1.0",
   "type": "module",
   "exports": { ".": "./src/index.ts" },
-  "dependencies": { "@jev-route/core": "workspace:*" }
+  "dependencies": { "@relaywise/core": "workspace:*" }
 }

@@ -1,5 +1,5 @@
 import { serve } from "@hono/node-server";
-import { JevClient, Router } from "@jev-route/router";
+import { JevClient, Router } from "@relaywise/router";
 import { createApp } from "./app.ts";
 import { loadConfig } from "./config.ts";
 import { DockerExecutor } from "./executors/docker.ts";
@@ -46,10 +46,10 @@ const server = serve({ fetch: app.fetch, port: cfg.port, hostname: cfg.host }, (
     .harnesses.filter((h) => h.base !== "auto")
     .map((h) => `${h.base}${h.available ? "" : " (unavailable)"}`)
     .join(", ");
-  console.log(`jev-route listening on http://${info.address}:${info.port}  (executor=${cfg.executor})`);
+  console.log(`relaywise listening on http://${info.address}:${info.port}  (executor=${cfg.executor})`);
   console.log(`  routing: ${cfg.typesafeApiKey ? `Jev (${cfg.jevModel}, deadline ${cfg.jevDeadlineMs}ms)` : "heuristic only — set TYPESAFE_API_KEY for Jev"}`);
   console.log(`  harnesses: ${harnesses}`);
-  if (cfg.apiKeys.length === 0) console.warn("  WARNING: JEV_ROUTE_API_KEYS is not set — the API is unauthenticated");
+  if (cfg.apiKeys.length === 0) console.warn("  WARNING: RELAYWISE_API_KEYS is not set — the API is unauthenticated");
 });
 
 const shutdown = async () => {

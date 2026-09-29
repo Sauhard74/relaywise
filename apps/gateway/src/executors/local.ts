@@ -3,8 +3,8 @@ import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { mkdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
-import type { HarnessId } from "@jev-route/core";
-import { runHarness } from "@jev-route/agentd";
+import type { HarnessId } from "@relaywise/core";
+import { runHarness } from "@relaywise/agentd";
 import type { Executor, RunHandle, Sandbox } from "./types.ts";
 
 export function runShell(cmd: string, args: string[], cwd: string | undefined, stdin?: Buffer): Promise<Buffer> {

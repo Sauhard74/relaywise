@@ -8,13 +8,14 @@ import { projectIdFor } from "./workspace.ts";
 
 const VERSION = "0.1.0";
 
-const USAGE = `jev — a terminal coding agent; Jev routes every request to the best agent
+const USAGE = `relay — a terminal coding agent (relaywise); every request goes to the right agent,
+        model and effort, chosen with TypeSafe's Jev
 
 Usage
-  jev                     interactive session in the current directory
-  jev -p "<task>"         run one task and print the result (exit 1 on failure)
-  jev memory [turn]       print this project's ledger (or one turn in full)
-  jev status              gateway and agent availability
+  relay                   interactive session in the current directory
+  relay -p "<task>"       run one task and print the result (exit 1 on failure)
+  relay memory [turn]     print this project's ledger (or one turn in full)
+  relay status            gateway and agent availability
 
 Options
   --harness <name>        auto (default) | claude-code | codex | opencode | hermes
@@ -25,8 +26,8 @@ Options
   --project <id>          project id (default: derived from this directory)
   --no-sync               don't mirror local files or apply changes back
   --json                  with -p: print the final response as JSON
-  --url <url>             gateway (default $JEV_ROUTE_URL or http://127.0.0.1:8420)
-  --key <key>             gateway API key (default $JEV_ROUTE_KEY)
+  --url <url>             gateway (default $RELAYWISE_URL or http://127.0.0.1:8420)
+  --key <key>             gateway API key (default $RELAYWISE_KEY)
   -v, --version · -h, --help
 `;
 
@@ -59,8 +60,8 @@ async function main(): Promise<number> {
   }
 
   const gateway = new Gateway(
-    (values.url ?? process.env.JEV_ROUTE_URL ?? "http://127.0.0.1:8420").replace(/\/+$/, ""),
-    values.key ?? process.env.JEV_ROUTE_KEY,
+    (values.url ?? process.env.RELAYWISE_URL ?? "http://127.0.0.1:8420").replace(/\/+$/, ""),
+    values.key ?? process.env.RELAYWISE_KEY,
   );
   const settings: Settings = {
     harness: values.harness!,
@@ -112,7 +113,7 @@ async function readStdin(): Promise<string> {
 main().then(
   (code) => process.exit(code),
   (err: Error) => {
-    process.stderr.write(`jev: ${err.message}\n`);
+    process.stderr.write(`relay: ${err.message}\n`);
     process.exit(1);
   },
 );

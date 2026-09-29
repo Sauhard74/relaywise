@@ -1,13 +1,13 @@
 {
-  "name": "@jev-route/cli",
+  "name": "@relaywise/cli",
   "version": "0.1.0",
-  "description": "jev \u2014 a terminal agent that routes every request to the best coding agent with Jev",
+  "description": "relay \u2014 a terminal coding agent that sends every request to the right agent, model and effort",
   "type": "module",
   "bin": {
-    "jev": "./dist/jev.mjs"
+    "relay": "./dist/relay.mjs"
   },
   "scripts": {
-    "build": "esbuild src/index.tsx --bundle --platform=node --target=node22 --format=esm --jsx=automatic --minify-syntax --define:process.env.NODE_ENV=\\\"production\\\" --outfile=dist/jev.mjs --banner:js=\"#!/usr/bin/env node\nimport { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);\" --alias:react-devtools-core=./src/stubs/devtools.js"
+    "build": "esbuild src/index.tsx --bundle --platform=node --target=node22 --format=esm --jsx=automatic --minify-syntax --define:process.env.NODE_ENV=\\\"production\\\" --outfile=dist/relay.mjs --banner:js=\"#!/usr/bin/env node\nimport { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);\" --alias:react-devtools-core=./src/stubs/devtools.js"
   },
   "dependencies": {
     "ink": "^7.1.1",

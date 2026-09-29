@@ -63,6 +63,6 @@ describe("formatting", () => {
       candidates: [],
     });
     expect(head).toBe("codex · gpt-5.6-terra · high");
-    expect(meta).toBe("jev 340ms · hard code change · est $0.12");
+    expect(meta).toBe("Jev 340ms · hard code change · est $0.12");
   });
 });

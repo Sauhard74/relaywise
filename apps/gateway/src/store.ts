@@ -1,8 +1,8 @@
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import Database from "better-sqlite3";
-import type { HarnessId, RouteDecision, TaskType } from "@jev-route/core";
-import type { OptionStats, PriorsProvider } from "@jev-route/router";
+import type { HarnessId, RouteDecision, TaskType } from "@relaywise/core";
+import type { OptionStats, PriorsProvider } from "@relaywise/router";
 
 export type ResponseStatus = "queued" | "in_progress" | "completed" | "incomplete" | "failed" | "cancelled";
 
@@ -236,7 +236,7 @@ export class Store {
     this.db.prepare(`UPDATE projects SET busy = 0 WHERE busy = 1`).run();
     this.db
       .prepare(
-        `UPDATE responses SET status = 'failed', error_json = '{"type":"server_error","code":"jevroute.gateway_restarted","message":"gateway restarted during the run"}', completed_at = ? WHERE status IN ('queued', 'in_progress')`,
+        `UPDATE responses SET status = 'failed', error_json = '{"type":"server_error","code":"relaywise.gateway_restarted","message":"gateway restarted during the run"}', completed_at = ? WHERE status IN ('queued', 'in_progress')`,
       )
       .run(Date.now());
   }

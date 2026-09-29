@@ -82,7 +82,7 @@ const CODING: TaskType[] = ["code_change", "debugging", "code_review"];
 
 /**
  * Default catalog. Prices are USD per million tokens as published 2026-09-28
- * (Anthropic, OpenAI, OpenRouter). Override with JEV_ROUTE_CATALOG=path/to/catalog.json.
+ * (Anthropic, OpenAI, OpenRouter). Override with RELAYWISE_CATALOG=path/to/catalog.json.
  */
 export const DEFAULT_OPTIONS: CatalogOption[] = [
   // Claude Code

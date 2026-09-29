@@ -1,12 +1,12 @@
 {
-  "name": "@jev-route/gateway",
+  "name": "@relaywise/gateway",
   "version": "0.1.0",
   "type": "module",
   "dependencies": {
     "@hono/node-server": "^1.13.7",
-    "@jev-route/agentd": "workspace:*",
-    "@jev-route/core": "workspace:*",
-    "@jev-route/router": "workspace:*",
+    "@relaywise/agentd": "workspace:*",
+    "@relaywise/core": "workspace:*",
+    "@relaywise/router": "workspace:*",
     "better-sqlite3": "^11.7.0",
     "hono": "^4.6.14",
     "zod": "^3.24.1"

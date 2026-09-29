@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import type { RunEvent } from "@jev-route/core";
+import type { RunEvent } from "@relaywise/core";
 import { parseJsonLine, promptArg, toText, type Driver } from "../driver.ts";
 
 /** OpenCode headless: `opencode run --format json`. Permissions are pre-approved via config. */

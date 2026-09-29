@@ -10,7 +10,7 @@ export interface TurnResult {
 
 export type Phase = { kind: "syncing"; files: number } | { kind: "running" } | { kind: "applying" };
 
-/** One `jev` conversation: consecutive turns share a session; `/new` starts another. */
+/** One `relay` conversation: consecutive turns share a session; `/new` starts another. */
 export class Session {
   previous?: string;
   lastPatch?: string;

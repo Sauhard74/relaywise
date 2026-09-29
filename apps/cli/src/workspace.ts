@@ -10,7 +10,7 @@ import { promisify } from "node:util";
 
 const run = promisify(execFile);
 /** Never uploaded. */
-const SKIP_DIRS = new Set([".git", ".jev", ".harness", "node_modules", ".venv", "venv", "__pycache__", "dist", "build", ".next", "target"]);
+const SKIP_DIRS = new Set([".git", ".relay", ".harness", "node_modules", ".venv", "venv", "__pycache__", "dist", "build", ".next", "target"]);
 const MAX_FILES = 20_000;
 
 export function projectIdFor(dir: string): string {

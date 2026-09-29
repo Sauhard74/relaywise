@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { RunEvent } from "@jev-route/core";
+import type { RunEvent } from "@relaywise/core";
 import { parseJsonLine, promptArg, type Driver } from "../driver.ts";
 
 /** Codex headless: `codex exec --json`. Resume via `codex exec resume <thread_id>`. */
@@ -26,7 +26,7 @@ export const codexDriver: Driver = {
     if (!auth) return { cmd: "codex", args };
     // ChatGPT login: a private CODEX_HOME outside the workspace, so the agent's own file tools
     // don't wander into it. Codex refreshes tokens in place; keep a copy that is newer than ours.
-    const home = join(process.env.HOME ?? spec.cwd, ".jev-route", "codex");
+    const home = join(process.env.HOME ?? spec.cwd, ".relaywise", "codex");
     const authPath = join(home, "auth.json");
     const files = isNewer(authPath, auth) ? {} : { [authPath]: auth };
     return { cmd: "codex", args, env: { CODEX_HOME: home, CODEX_AUTH_JSON: "" }, files };

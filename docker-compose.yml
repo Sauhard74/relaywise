@@ -1,13 +1,15 @@
 # docker compose up --build
 # Gateway on http://127.0.0.1:8420 (dashboard at /dashboard). Sessions run in sibling
 # containers started from the agent-runtime image through the host Docker socket.
+name: relaywise
+
 services:
   agent-runtime:
     # Build-only: provides the image the gateway starts per session.
     build:
       context: .
       dockerfile: docker/agent-runtime/Dockerfile
-    image: jev-route/agent-runtime:latest
+    image: relaywise/agent-runtime:latest
     entrypoint: ["true"]
     restart: "no"
 
@@ -20,13 +22,13 @@ services:
         condition: service_completed_successfully
     env_file: .env
     environment:
-      JEV_ROUTE_IMAGE: jev-route/agent-runtime:latest
+      RELAYWISE_IMAGE: relaywise/agent-runtime:latest
     ports:
       - "127.0.0.1:8420:8420"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - jev-route-data:/app/data
+      - relaywise-data:/app/data
     restart: unless-stopped
 
 volumes:
-  jev-route-data:
+  relaywise-data:

@@ -1,4 +1,4 @@
-import { TASK_TYPES, type CatalogOption, type Difficulty, type RouteFeatures, type TaskType } from "@jev-route/core";
+import { TASK_TYPES, type CatalogOption, type Difficulty, type RouteFeatures, type TaskType } from "@relaywise/core";
 import type { JevAnswer, JevQuestion } from "./jev.ts";
 
 const TASK_TYPE_CRITERIA: Record<TaskType, string> = {

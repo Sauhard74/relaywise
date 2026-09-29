@@ -10,7 +10,7 @@ import {
   type RouteDecision,
   type RouteFeatures,
   type RouteSource,
-} from "@jev-route/core";
+} from "@relaywise/core";
 import { TtlCache } from "./cache.ts";
 import { heuristicFeatures } from "./heuristic.ts";
 import type { JevClient } from "./jev.ts";

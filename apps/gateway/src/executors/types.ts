@@ -1,4 +1,4 @@
-import type { HarnessId, RunEvent, RunSpec } from "@jev-route/core";
+import type { HarnessId, RunEvent, RunSpec } from "@relaywise/core";
 
 export type RunStatus = "completed" | "failed" | "cancelled";
 
@@ -21,7 +21,7 @@ export interface Executor {
   installed(): Promise<Record<HarnessId, boolean>>;
   /**
    * Returns a running sandbox for the session, creating or restarting it as needed. With a
-   * project, the workspace is the project's persistent one (files, git history, .jev/ ledger).
+   * project, the workspace is the project's persistent one (files, git history, .relay/ ledger).
    */
   ensureSandbox(sessionId: string, existingId: string | null, projectId: string | null): Promise<Sandbox>;
   /** Reads a file from a project's workspace; null if the project or file doesn't exist. */

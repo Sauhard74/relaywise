@@ -1,15 +1,15 @@
 /**
- * Opt-in: JEV_ROUTE_DOCKER_E2E=1 pnpm test apps/gateway/test/docker.e2e.test.ts
+ * Opt-in: RELAYWISE_DOCKER_E2E=1 pnpm test apps/gateway/test/docker.e2e.test.ts
  * Needs Docker and the image from `pnpm build:image`.
  */
 import { execFileSync } from "node:child_process";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type { RunEvent, RunSpec } from "@jev-route/core";
+import type { RunEvent, RunSpec } from "@relaywise/core";
 import { DockerExecutor } from "../src/executors/docker.ts";
 
-const enabled = process.env.JEV_ROUTE_DOCKER_E2E === "1";
+const enabled = process.env.RELAYWISE_DOCKER_E2E === "1";
 const session = `e2e${Date.now().toString(36)}`;
-const image = process.env.JEV_ROUTE_IMAGE ?? "jev-route/agent-runtime:latest";
+const image = process.env.RELAYWISE_IMAGE ?? "relaywise/agent-runtime:latest";
 
 describe.skipIf(!enabled)("DockerExecutor (real containers)", () => {
   const executor = new DockerExecutor({ image, network: "none", cpus: "1", memory: "1g", enableMock: true });
@@ -77,7 +77,7 @@ describe.skipIf(!enabled)("DockerExecutor (real containers)", () => {
     const b = await executor.ensureSandbox(`${session}p2`, null, project);
     const ls = execFileSync("docker", ["exec", b.id, "ls", "-a", "/home/agent/workspace"], { encoding: "utf8" });
     expect(ls).toContain("shared.txt");
-    expect(await executor.readProjectFile(project, ".jev/MEMORY.md")).toContain("## Turn 1");
+    expect(await executor.readProjectFile(project, ".relay/MEMORY.md")).toContain("## Turn 1");
     await executor.stopSandbox(b.id);
   });
 

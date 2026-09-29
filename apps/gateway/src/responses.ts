@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import type { RunEvent } from "@jev-route/core";
+import type { RunEvent } from "@relaywise/core";
 import type { ResponseStatus } from "./store.ts";
 
 export type OutputItem =

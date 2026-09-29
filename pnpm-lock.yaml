@@ -48,13 +48,13 @@ importers:
       '@hono/node-server':
         specifier: ^1.13.7
         version: 1.19.17(hono@4.13.10)
-      '@jev-route/agentd':
+      '@relaywise/agentd':
         specifier: workspace:*
         version: link:../../packages/agentd
-      '@jev-route/core':
+      '@relaywise/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@jev-route/router':
+      '@relaywise/router':
         specifier: workspace:*
         version: link:../../packages/router
       better-sqlite3:
@@ -73,7 +73,7 @@ importers:
 
   packages/agentd:
     dependencies:
-      '@jev-route/core':
+      '@relaywise/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -85,7 +85,7 @@ importers:
 
   packages/router:
     dependencies:
-      '@jev-route/core':
+      '@relaywise/core':
         specifier: workspace:*
         version: link:../core
 

@@ -21,9 +21,9 @@ export function createApp(service: GatewayService, apiKeys: string[]): Hono {
   app.onError((err, c) => {
     if (err instanceof ApiError) return errorResponse(c, err);
     console.error(err);
-    return errorResponse(c, new ApiError(500, "server_error", "jevroute.internal_error", "internal server error"));
+    return errorResponse(c, new ApiError(500, "server_error", "relaywise.internal_error", "internal server error"));
   });
-  app.notFound((c) => errorResponse(c, new ApiError(404, "invalid_request_error", "jevroute.not_found", `no route ${c.req.method} ${c.req.path}`)));
+  app.notFound((c) => errorResponse(c, new ApiError(404, "invalid_request_error", "relaywise.not_found", `no route ${c.req.method} ${c.req.path}`)));
 
   // ---- version negotiation ---------------------------------------------------------------------
   app.use("*", async (c, next) => {
@@ -47,7 +47,7 @@ export function createApp(service: GatewayService, apiKeys: string[]): Hono {
       versions: [UHP_VERSION],
       default_version: UHP_VERSION,
       conformance_class: "core",
-      implementation: { name: "jev-route", version: "0.1.0" },
+      implementation: { name: "relaywise", version: "0.1.0" },
       capabilities: {
         streaming: true,
         sessions: true,
@@ -59,7 +59,7 @@ export function createApp(service: GatewayService, apiKeys: string[]): Hono {
         harness_management: false,
         session_sharing: false,
         plugins: false,
-        "jevroute.auto_routing": true,
+        "relaywise.auto_routing": true,
       },
     }),
   );
@@ -140,7 +140,7 @@ export function createApp(service: GatewayService, apiKeys: string[]): Hono {
   app.delete("/v1/projects/:id", async (c) => c.json(await service.deleteProject(c.req.param("id"))));
   app.post("/v1/projects/:id/sync", async (c) => {
     const tar = Buffer.from(await c.req.arrayBuffer());
-    if (tar.length > 200 * 1024 * 1024) throw new ApiError(413, "invalid_request_error", "jevroute.too_large", "workspace upload is over 200 MB");
+    if (tar.length > 200 * 1024 * 1024) throw new ApiError(413, "invalid_request_error", "relaywise.too_large", "workspace upload is over 200 MB");
     return c.json(await service.syncProject(validProject(c.req.param("id")), tar));
   });
   app.get("/v1/projects/:id/diff", async (c) =>

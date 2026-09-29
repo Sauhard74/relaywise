@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { DEFAULT_CATALOG, type Catalog, type CatalogOption } from "@jev-route/core";
+import { DEFAULT_CATALOG, type Catalog, type CatalogOption } from "@relaywise/core";
 import {
   JevClient,
   Router,

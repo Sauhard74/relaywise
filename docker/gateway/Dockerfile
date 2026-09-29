@@ -1,4 +1,4 @@
-# jev-route gateway. Talks to the host Docker daemon (socket mount) to start one
+# relaywise gateway. Talks to the host Docker daemon (socket mount) to start one
 # agent-runtime container per session.
 FROM node:22-bookworm-slim
 COPY --from=docker:27-cli /usr/local/bin/docker /usr/local/bin/docker
@@ -10,7 +10,7 @@ COPY apps ./apps
 RUN pnpm install --frozen-lockfile && pnpm store prune
 ENV HOST=0.0.0.0 \
     PORT=8420 \
-    JEV_ROUTE_EXECUTOR=docker \
-    JEV_ROUTE_DB=/app/data/jev-route.db
+    RELAYWISE_EXECUTOR=docker \
+    RELAYWISE_DB=/app/data/relaywise.db
 EXPOSE 8420
 CMD ["pnpm", "start"]
