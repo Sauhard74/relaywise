@@ -65,7 +65,7 @@ and runs in a sandbox. Your working tree stays the source of truth: it's mirrore
 project's sandbox before each turn, and the agent's changes come back as an unstaged diff.
 
 ```bash
-pnpm build:cli && ln -s "$PWD/apps/cli/dist/relay.mjs" ~/.local/bin/relay   # once
+npm install -g relaywise          # or from source: pnpm build:cli && ln -s "$PWD/apps/cli/dist/relay.mjs" ~/.local/bin/relay
 cd ~/code/my-repo && relay
 ```
 

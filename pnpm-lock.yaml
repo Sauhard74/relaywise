@@ -22,7 +22,13 @@ importers:
         version: 2.1.9(@types/node@22.20.4)
 
   apps/cli:
-    dependencies:
+    devDependencies:
+      '@types/react':
+        specifier: ^19.2.0
+        version: 19.3.0
+      esbuild:
+        specifier: ^0.24.0
+        version: 0.24.2
       ink:
         specifier: ^7.1.1
         version: 7.1.1(@types/react@19.3.0)(react@19.3.0)
@@ -35,13 +41,6 @@ importers:
       react:
         specifier: ^19.2.0
         version: 19.3.0
-    devDependencies:
-      '@types/react':
-        specifier: ^19.2.0
-        version: 19.3.0
-      esbuild:
-        specifier: ^0.24.0
-        version: 0.24.2
 
   apps/gateway:
     dependencies:

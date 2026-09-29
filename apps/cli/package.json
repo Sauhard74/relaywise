@@ -1,21 +1,49 @@
 {
-  "name": "@relaywise/cli",
+  "name": "relaywise",
   "version": "0.1.0",
-  "description": "relay \u2014 a terminal coding agent that sends every request to the right agent, model and effort",
+  "description": "relay \u2014 a terminal coding agent that sends every request to the right agent, model and effort (Claude Code, Codex, OpenCode, Hermes), in isolated sandboxes",
   "type": "module",
   "bin": {
     "relay": "./dist/relay.mjs"
   },
-  "scripts": {
-    "build": "esbuild src/index.tsx --bundle --platform=node --target=node22 --format=esm --jsx=automatic --minify-syntax --define:process.env.NODE_ENV=\\\"production\\\" --outfile=dist/relay.mjs --banner:js=\"#!/usr/bin/env node\nimport { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);\" --alias:react-devtools-core=./src/stubs/devtools.js"
+  "files": [
+    "dist/relay.mjs",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22"
   },
-  "dependencies": {
+  "license": "Apache-2.0",
+  "author": "Sauhard Gupta",
+  "homepage": "https://github.com/Sauhard74/relaywise#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sauhard74/relaywise.git",
+    "directory": "apps/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/Sauhard74/relaywise/issues"
+  },
+  "keywords": [
+    "ai",
+    "coding-agent",
+    "cli",
+    "claude-code",
+    "codex",
+    "opencode",
+    "llm-routing",
+    "agents",
+    "sandbox"
+  ],
+  "scripts": {
+    "build": "esbuild src/index.tsx --bundle --platform=node --target=node22 --format=esm --jsx=automatic --minify-syntax --define:process.env.NODE_ENV=\\\"production\\\" --outfile=dist/relay.mjs --banner:js=\"#!/usr/bin/env node\nimport { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);\" --alias:react-devtools-core=./src/stubs/devtools.js",
+    "prepublishOnly": "pnpm run build"
+  },
+  "devDependencies": {
     "ink": "^7.1.1",
     "ink-spinner": "^5.0.0",
     "ink-text-input": "^6.0.0",
-    "react": "^19.2.0"
-  },
-  "devDependencies": {
+    "react": "^19.2.0",
     "@types/react": "^19.2.0",
     "esbuild": "^0.24.0"
   }
