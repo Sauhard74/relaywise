@@ -58,6 +58,37 @@ JEV_ROUTE_EXECUTOR=local TYPESAFE_API_KEY=… pnpm start
 Add `JEV_ROUTE_ENABLE_MOCK=1` to get a deterministic `mock` harness for demos and tests without
 any provider keys.
 
+## The `jev` CLI
+
+A terminal agent in the style of Claude Code / Codex CLI — except every request is routed by Jev
+and runs in a sandbox. Your working tree stays the source of truth: it's mirrored into the
+project's sandbox before each turn, and the agent's changes come back as an unstaged diff.
+
+```bash
+pnpm build:cli && ln -s "$PWD/apps/cli/dist/jev.mjs" ~/.local/bin/jev   # once
+cd ~/code/my-repo && jev
+```
+
+```
+› Add apply_discount(items, pct) to prices.py, validating pct is between 0 and 100
+  ⎿ opencode · deepseek-v4.1-flash  jev 396ms · easy code change · est $0.0030
+  ⏺ read /home/agent/workspace/prices.py
+  ⏺ edit /home/agent/workspace/prices.py
+  ⏺ bash python3 -c "from prices import apply_discount; …"
+  Added apply_discount(items, pct) to prices.py, raising ValueError outside 0–100.
+  ✓ done · $0.0030 · 9.0s · turn 1 · 1 file +6 −0
+    prices.py +6 −0
+```
+
+- One project per directory, so the ledger (`/memory`) persists across `jev` runs; `/new` starts
+  a fresh session that is still briefed from it.
+- `/route <task>` shows where Jev would send something and why; `/harness`, `/model`, `/effort`,
+  `/objective`, `/budget` pin or steer routing; `/diff` and `/undo` review or revert the last
+  change; `esc` cancels a running turn.
+- `jev -p "task"` runs one turn non-interactively (stdin works too), `--json` prints the final
+  response, and the exit code is non-zero on failure — for scripts and CI.
+- Configure with `JEV_ROUTE_URL` / `JEV_ROUTE_KEY` (default `http://127.0.0.1:8420`).
+
 ## API
 
 Wire-compatible with HarnessRouter / the [Unified Harness Protocol](https://unifiedharnessprotocol.org)

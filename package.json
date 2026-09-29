@@ -17,7 +17,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "eval:router": "tsx packages/router/eval/run.ts"
+    "eval:router": "tsx packages/router/eval/run.ts",
+    "build:cli": "pnpm --filter @jev-route/cli build",
+    "jev": "node apps/cli/dist/jev.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

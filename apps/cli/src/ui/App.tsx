@@ -411,10 +411,16 @@ function EntryView({ entry, session, version }: { entry: Entry; session: Session
     case "user":
       return (
         <Box marginTop={1}>
-          <Text color={ACCENT} bold>
-            {"› "}
-          </Text>
-          <Text bold>{entry.text}</Text>
+          <Box width={2} flexShrink={0}>
+            <Text color={ACCENT} bold>
+              ›
+            </Text>
+          </Box>
+          <Box flexGrow={1}>
+            <Text bold wrap="wrap">
+              {entry.text}
+            </Text>
+          </Box>
         </Box>
       );
     case "route": {
