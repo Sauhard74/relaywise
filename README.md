@@ -13,278 +13,88 @@
 </p>
 
 <p align="center">
-  <img src="docs/demo.gif" alt="relay routing a task in the terminal: route preview, a live agent run, and the diff" width="100%" />
+  <img src="docs/demo.gif" alt="relay in the terminal: a route preview, a live agent run, and the diff" width="100%" />
 </p>
 
-**One API and a terminal agent for coding agents — every task goes to the right agent, model and effort.**
-
-relaywise runs Claude Code, Codex, OpenCode and Hermes Agent as your product's backend, each
-session in its own hardened container, behind a HarnessRouter-compatible Responses API. Send
-`harness_id: "auto"` and relaywise uses TypeSafe's [Jev](https://typesafe.ai) System One model to read
-the task, then picks the **harness × model × reasoning effort** that fits your objective and budget — in
-one ~50–500 ms call that costs a fraction of a cent. Every run's cost and outcome feeds back into
-routing.
-
-```bash
-curl -N http://127.0.0.1:8420/v1/responses \
-  -H "Authorization: Bearer $RELAYWISE_KEY" -H "Content-Type: application/json" \
-  -d '{"input": "Find why the login test fails after the express v5 upgrade and fix it",
-       "metadata": {"harness_id": "auto"},
-       "routing": {"objective": "balanced", "max_cost_usd": 2},
-       "stream": true}'
-```
-
-## Why
-
-Harness APIs such as [HarnessRouter](https://harnessrouter.ai) and AgentSky make you pick the
-harness and model by hand. HarnessRouter's own benchmark shows a **~475× cost spread** across
-harness/model configurations on the same task, and changing only the harness moves cost 1.5–2×.
-Picking right per task is the product; nobody automates it.
-
-| | relaywise | HarnessRouter CE | HarnessRouter Cloud | AgentSky | Harness Router (Protocol-Lattice) |
-|---|---|---|---|---|---|
-| One API over many harnesses | ✅ 4 + mock | ✅ 9+ | ✅ 15 | ✅ 8 | ❌ (tool routing inside Codex) |
-| **Automatic harness × model × effort routing** | ✅ Jev + fallback | ❌ | ❌ | ❌ | tool choice only |
-| Per-request reasoning effort | ✅ | ❌ (process-wide) | — | — | — |
-| Cost estimate + budget before running | ✅ `max_cost_usd` | ❌ | cost caps | — | — |
-| Learns from outcomes & feedback | ✅ | ❌ | — | — | ❌ |
-| Per-session container isolation (self-host) | ✅ caps dropped, non-root, no-new-privs | ❌ OS users in one container | ✅ VM per task | ✅ | — |
-| UHP 2026-09-12 core conformance | ✅ 40/40 | ✅ | ✅ | own API | — |
-| License | Apache-2.0 | Apache-2.0 | proprietary | proprietary | MIT |
-
-"—" = not documented publicly as of 2026-09-28.
+relaywise is a terminal coding agent — and an API — that doesn't pick one AI model and hope.
+For every request it chooses between **Claude Code, Codex, OpenCode and Hermes**, the model to run
+them with, and how hard they should think, then runs the chosen agent in an isolated sandbox. Easy
+tasks go to fast, cheap models; hard ones get a frontier model. The choice takes about a third of a
+second, is made with TypeSafe's [Jev](https://typesafe.ai) model, and is explained every time.
 
 ## Quickstart
 
-Needs Docker and Node 22+.
+You need Docker and Node 22+.
 
 ```bash
 npm install -g relaywise
-relay up                      # asks for your keys once, pulls the images, starts the gateway
-cd ~/code/your-repo && relay
+relay up                  # asks for your API keys once, then starts relaywise in Docker
+cd ~/code/your-repo
+relay
 ```
 
-`relay up` keeps its config in `~/.relaywise`, pins images to the CLI's version, and prints which
-agents are ready; `relay down` stops it and `relay logs` follows it. The dashboard is at
-http://127.0.0.1:8420/dashboard.
+Ask for a change the way you would with any coding agent. Your files are copied into a sandbox,
+the agent works there, and its changes come back to your repo as ordinary uncommitted edits you
+can review with `git diff`.
 
-**From source (contributors):**
+## What you get
 
-```bash
-cp .env.example .env          # add TYPESAFE_API_KEY and the provider keys you have
-docker compose up --build     # builds the agent runtime image and the gateway
-```
+- **The right agent per task.** Each request is matched to an agent, model and effort level based
+  on what it is and how hard it is. On our 40-task benchmark the choice matches the right tier
+  90–95% of the time, at an estimated 40% less than always using the top model.
+  [How routing works →](docs/routing.md)
+- **You stay in control of cost.** Optimise for `cheapest`, `balanced` or `best`, set a budget per
+  request, and see the estimate before anything runs.
+- **Memory that survives switching models.** Every turn is a git commit plus an entry in
+  `.relay/MEMORY.md`, so when a follow-up goes to a different agent it picks up exactly where the
+  last one stopped — even in a new session.
+- **Sandboxed by default.** One locked-down container per session; your API keys never enter the
+  container's configuration.
+- **It learns.** Tell it whether a run worked, and future routing for similar tasks improves.
+- **A dashboard and an API too.** See where every task went at `http://127.0.0.1:8420/dashboard`,
+  or call it from your own app — it speaks the same API as [HarnessRouter](https://harnessrouter.ai),
+  plus automatic routing. [API reference →](docs/api.md)
 
-**Local dev (no containers; harnesses run as host processes and reuse your CLI logins):**
+## Using `relay`
 
-```bash
-corepack enable && pnpm install
-RELAYWISE_EXECUTOR=local TYPESAFE_API_KEY=… pnpm start
-```
-
-Add `RELAYWISE_ENABLE_MOCK=1` to get a deterministic `mock` harness for demos and tests without
-any provider keys.
-
-## The `relay` CLI
-
-A terminal agent in the style of Claude Code / Codex CLI — except every request is routed by Jev
-and runs in a sandbox. Your working tree stays the source of truth: it's mirrored into the
-project's sandbox before each turn, and the agent's changes come back as an unstaged diff.
-
-```bash
-npm install -g relaywise          # or from source: pnpm build:cli && ln -s "$PWD/apps/cli/dist/relay.mjs" ~/.local/bin/relay
-cd ~/code/my-repo && relay
-```
-
-```
-› Add apply_discount(items, pct) to prices.py, validating pct is between 0 and 100
-  ⎿ opencode · deepseek-v4.1-flash  Jev 396ms · easy code change · est $0.0030
-  ⏺ read /home/agent/workspace/prices.py
-  ⏺ edit /home/agent/workspace/prices.py
-  ⏺ bash python3 -c "from prices import apply_discount; …"
-  Added apply_discount(items, pct) to prices.py, raising ValueError outside 0–100.
-  ✓ done · $0.0030 · 9.0s · turn 1 · 1 file +6 −0
-    prices.py +6 −0
-```
-
-- One project per directory, so the ledger (`/memory`) persists across `relay` runs; `/new` starts
-  a fresh session that is still briefed from it.
-- `/route <task>` shows where Jev would send something and why; `/harness`, `/model`, `/effort`,
-  `/objective`, `/budget` pin or steer routing; `/diff` and `/undo` review or revert the last
-  change; `esc` cancels a running turn.
-- `relay -p "task"` runs one turn non-interactively (stdin works too), `--json` prints the final
-  response, and the exit code is non-zero on failure — for scripts and CI.
-- Configure with `RELAYWISE_URL` / `RELAYWISE_KEY` (default `http://127.0.0.1:8420`).
-
-## API
-
-Wire-compatible with HarnessRouter / the [Unified Harness Protocol](https://unifiedharnessprotocol.org)
-`2026-09-12` core class. Existing clients switch by changing the base URL; they gain
-`harness_id: "auto"`.
-
-| Endpoint | |
+| Command | What it does |
 |---|---|
-| `POST /v1/responses` | Run a task. `metadata.harness_id`: `auto` (default) \| `claude-code` \| `codex` \| `opencode` \| `hermes` (or `chrn_<id>`). `stream`, `background`, `previous_response_id`, `reasoning.effort`, `routing.{objective,max_cost_usd}`, `max_step`, `timeout_seconds`, `Idempotency-Key` header. Also served at `/api/harness/v1/responses` and `/{harness_id}/v1/responses`. |
-| `POST /v1/route` | Dry-run: returns the routing decision without running anything. |
-| `GET /v1/responses/:id` | Read a response (`?stream=true` to attach to a live stream). |
-| `POST /v1/responses/:id/cancel` | Cancel; ends `cancelled`, idempotent. |
-| `POST /v1/responses/:id/feedback` | `{score: 0..1}` — teaches the router what worked. |
-| `GET /v1/responses` · `GET /v1/stats` | Recent runs; spend, success, routing mix, savings. |
-| `GET /v1/harnesses` · `GET /v1/models` · `GET /v1/uhp` | Discovery (UHP shapes). |
+| `relay` | Interactive session in the current directory |
+| `relay -p "task"` | Run one task and exit — for scripts and CI (`--json` for machine-readable output) |
+| `relay up` / `relay down` / `relay logs` | Start, stop or watch the local relaywise service |
+| `relay status` | Show which agents are ready |
 
-Every response carries its routing decision in `metadata.route`: the features Jev extracted,
-the chosen option and effort, the estimated cost, the no-router baseline, the top candidates with
-their score breakdown, and a one-line reason. Streams follow the Responses event sequence with
-gapless `sequence_number`s and exactly one terminal event.
+Inside a session:
 
-### Sessions: one task, many models
+| | |
+|---|---|
+| `/route <task>` | See where a task would go and why, without running it |
+| `/objective cheapest \| balanced \| best` | What to optimise for |
+| `/budget 0.50` | Refuse anything estimated above this |
+| `/harness`, `/model`, `/effort` | Pin a specific agent, model or effort level |
+| `/diff`, `/undo` | Review or revert the last change |
+| `/memory` | What happened so far in this project |
+| `/new` | Fresh conversation — still briefed from the project's memory |
 
-Continuing with `previous_response_id` re-routes every turn of an `auto` session: Jev sees a
-digest of the earlier turns plus the new request, so "now add tests for it" is judged in context,
-and a small continuity bonus avoids switching agents without reason. Correlated turns can land
-on different harnesses because memory lives in the workspace, not in any one agent:
+`esc` stops a running task; `ctrl+c` twice quits.
 
-- **The workspace is a git repo.** Every turn is a commit authored as `<harness>/<model>`, so
-  `git log` / `git show` tell any agent exactly who changed what.
-- **`.relay/MEMORY.md`** holds one entry per turn — request, agent/model/effort, a short result
-  and the files changed; `.relay/turns/NNNN.md` keeps each turn in full.
-- **Same harness as the last turn →** it resumes its own native session (Claude Code
-  `--resume`, Codex `exec resume`, OpenCode `--session`). **Different harness, or one that can't
-  resume (Hermes) →** it starts fresh with a briefing built from the ledger.
-- **`.relay/SKILL.md`** teaches every agent the workflow and is linked from the files each harness
-  reads natively (`AGENTS.md` for Codex/OpenCode/Hermes, `CLAUDE.md` for Claude Code) through a
-  marked block that leaves project instructions intact: read the ledger when picking up work,
-  never rewrite history or edit `.relay/`, and open the final message with a one-line summary —
-  which becomes the ledger entry.
+## Using your subscriptions
 
-**Projects** make that memory permanent. Send `metadata.project_id` (or `X-Project-Id`) and the
-workspace — files, git history and `.relay/` — belongs to the project instead of the session: a
-brand-new session starts with everything earlier sessions did, its first turn is routed with the
-project's history and briefed from the ledger, and turn numbers continue. One turn runs at a time
-per project (`relaywise.project_busy`). `GET /v1/projects/:id` shows stats,
-`GET /v1/projects/:id/memory` returns `MEMORY.md` (`?turn=N` for one turn in full), and
-`DELETE /v1/projects/:id` removes it. Project workspaces don't expire.
+- **Claude:** run `claude setup-token` and give `relay up --reconfigure` the token.
+- **ChatGPT (Codex):** run `CODEX_HOME=~/.codex-relaywise codex login` once; `relay up` picks it up.
+- **OpenCode and Hermes** use an [OpenRouter](https://openrouter.ai) key.
 
-Each response reports its commit, turn number and files in `metadata.checkpoint`, and whether it
-was a handoff in `metadata.route.handoff`. Sessions pinned to a harness keep it (UHP
-`harness_mismatch` otherwise). Tested live: Claude Code wrote a function; Codex, with none of that
-conversation, added its inverse and named the original author and commit from the ledger.
+## Learn more
 
-## How routing works
+- [How routing works](docs/routing.md) — the decision, the scoring, and benchmark results
+- [HTTP API](docs/api.md) — endpoints, sessions, projects and memory
+- [Architecture and development](docs/architecture.md) — how it's built, security model, running from source, releasing
 
-1. **Eligibility (code).** Options whose harness isn't installed, whose credentials are missing,
-   or that the caller excluded by pinning a harness/model.
-2. **Jev, one batched call** with a hard deadline (default 900 ms): `task_type` (choice),
-   `difficulty` (5-level score), `edits_code` / `long_horizon` / `needs_web` (noul), and
-   `best_option` (choice over the eligible options, described by capability — never price,
-   because Jev is poor at arithmetic). Answers are cached by prompt + pool.
-3. **Scoring (code).** `score = tier fit + task affinity + Jev preference + outcome prior − λ(objective) · log-normalised est. cost`.
-   Under-provisioning (a hard task on a weak tier) is penalised far more than over-provisioning.
-   The prior comes from logged outcomes per task type and option — explicit feedback when
-   given, otherwise completed/failed — shrunk towards a neutral mean so it only matters once
-   there's data. Observed actual/estimated cost ratios recalibrate the estimates.
-4. **Effort** follows difficulty and objective and is mapped to each harness's native knob
-   (`claude --effort`, Codex `model_reasoning_effort`).
-5. **Budget.** Options estimated above `max_cost_usd` are dropped; if none remain, the request
-   fails fast with `relaywise.budget_exceeded` and the cheapest estimate.
-6. **Fallback.** No key, timeout, 429/529 or a malformed answer → keyword heuristics produce the
-   same features, and the decision records `source: "heuristic"` with the reason.
+## Roadmap
 
-### Routing eval
-
-`pnpm eval:router` runs the router over 40 labelled tasks (`packages/router/eval/dataset.jsonl`)
-and reports task-type accuracy, difficulty error, under/over-provisioning and estimated spend.
-With `TYPESAFE_API_KEY` set it evaluates Jev; without it, the keyword fallback. Measured
-2026-09-28 with `jev-latest`:
-
-| engine, objective | tier exact | under-provisioned | over-provisioned | est. saving vs top tier | router p50 / p95 |
-|---|---|---|---|---|---|
-| **Jev, balanced** | **90–95%** | **2.5–5%** | 2.5–5% | 41% | 336 / 420 ms |
-| Jev, best | 95% | 0% | 5% | 41% | 359 / 448 ms |
-| Jev, cheapest | 72.5% | 27.5% (by design) | 0% | 58% | 349 / 398 ms |
-| fallback, balanced | 80% | 7.5% | 12.5% | 37% | <1 ms |
-
-Jev answers vary slightly between runs (the balanced range is two runs); `jev-preview` scored
-no better. The fallback rules and the labels were written together, so treat the fallback row
-as an upper bound. Add your own tasks to the dataset.
-
-## Isolation and security
-
-- One container per session from `relaywise/agent-runtime`: non-root user, `--cap-drop ALL`,
-  `no-new-privileges`, pid/cpu/memory limits, configurable network
-  (`RELAYWISE_CONTAINER_NETWORK=none` for offline work). The session's home lives on a named
-  volume so idle containers are reaped (`RELAYWISE_CONTAINER_IDLE_MS`) without losing work;
-  sessions expire after `RELAYWISE_SESSION_RETENTION_MS`.
-- Provider keys are sent per run over stdin — never container env or args, so they don't show
-  in `docker inspect` — and each harness gets only its own provider's keys.
-- Key values are redacted from every streamed event and stored output.
-- Harnesses run with their permission prompts bypassed *because* the container is the sandbox.
-  The `local` executor has no isolation and is for development only.
-- API auth: bearer tokens from `RELAYWISE_API_KEYS`, compared in constant time.
-
-## Using subscriptions instead of API keys
-
-- **Claude Code:** `claude setup-token`, then set `CLAUDE_CODE_OAUTH_TOKEN`.
-- **Codex (ChatGPT plan):** create a dedicated login and point the gateway at it —
-  `CODEX_HOME=~/.codex-relaywise codex login`, then `CODEX_AUTH_FILE=~/.codex-relaywise/auth.json`
-  (with compose, mount the folder into the gateway and set `CODEX_AUTH_FILE=/run/codex/auth.json`).
-  The file travels to sandboxes over stdin like any key, and its tokens are redacted from output.
-  A ChatGPT login serves `gpt-5.6-luna`, `gpt-5.6-terra` and `gpt-6-astra`; the router only
-  offers Codex models the configured credential can run. Subscription use is subject to your
-  plan's limits; for production traffic use API keys.
-
-## Configuration
-
-See [`.env.example`](.env.example). The catalog of options and prices lives in
-[`packages/core/src/catalog.ts`](packages/core/src/catalog.ts) (prices as published
-2026-09-28); override it with `RELAYWISE_CATALOG=catalog.json`
-(`{"options": [...], "harnesses": {...}}`). Point `TYPESAFE_BASE_URL` at any wire-compatible
-System One server (e.g. a self-hosted OpenJev) to avoid a hard dependency on TypeSafe.
-
-## Architecture
-
-```
-packages/core      shared types, catalog + cost model, redaction
-packages/router    Jev client, question set, scorer, heuristic fallback, cache, eval
-packages/agentd    in-sandbox runner: harness drivers → normalized NDJSON events
-apps/gateway       Hono API, SSE, sessions, SQLite store, executors (docker | local), dashboard
-docker/            agent-runtime image (all harness CLIs + agentd), gateway image
-```
-
-```
-client ─▶ gateway ─ auth · idempotency ─▶ router (Jev ⟶ scorer | heuristic) ─▶ budget
-                 └─▶ executor ─ docker exec ─▶ agentd ─▶ claude | codex | opencode | hermes
-                 ◀─ Responses SSE ◀─ normalizer ◀─ NDJSON events
-                 └─▶ SQLite: responses · sessions · route decisions · outcomes · feedback
-```
-
-## Development
-
-```bash
-pnpm test                 # unit + integration (no keys or Docker needed)
-pnpm typecheck
-pnpm eval:router
-pnpm build:image && RELAYWISE_DOCKER_E2E=1 pnpm test apps/gateway/test/docker.e2e.test.ts
-```
-
-UHP conformance, using HarnessRouter's suite:
-
-```bash
-pip install -e <harnessrouter>/protocol/conformance
-uhp-conformance --base-url http://127.0.0.1:8420 --api-key $KEY --class core --harness-id chrn_auto
-```
-
-## Status and roadmap
-
-MVP. Verified end to end with live Jev routing and real Claude Code and Codex runs
-(streaming, tool calls, native resume, cost). OpenCode and Hermes are installed in the image and their drivers are tested
-against their documented output formats, but haven't had a live run yet.
-
-Next: file inputs/outputs (UHP extended class), a cloud sandbox executor (E2B / Vercel
-Sandbox), OpenCode effort via `--variant`, per-org budgets, and training the router's priors
-into a small learned ranker as outcome data accumulates
-([Agentic Routing](https://arxiv.org/abs/2607.11399)).
+File uploads through the API, cloud sandboxes (E2B, Vercel Sandbox), per-team budgets, and a
+learned ranker trained on the outcomes relaywise records.
 
 ## License
 
-Apache-2.0
+[Apache-2.0](LICENSE)
