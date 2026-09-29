@@ -31,6 +31,14 @@ export function App({ session, version }: { session: Session; version: string })
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState<number | null>(null);
+  // Remounting the input puts the cursor at the end after a programmatic change (history, clear).
+  const [inputKey, setInputKey] = useState(0);
+  // ink-text-input also sees ctrl+u and would insert a "u"; drop that change.
+  const clearedAt = useRef(0);
+  const replaceInput = useCallback((v: string) => {
+    setInput(v);
+    setInputKey((k) => k + 1);
+  }, []);
   const [running, setRunning] = useState(false);
   const [phase, setPhase] = useState<string>("");
   const [liveText, setLiveText] = useState("");
@@ -148,7 +156,7 @@ export function App({ session, version }: { session: Session; version: string })
                       <Text dimColor>{d}</Text>
                     </Text>
                   ))}
-                  <Text dimColor>esc cancels a running turn · ↑↓ history · ctrl+c twice to quit</Text>
+                  <Text dimColor>esc cancels a running turn · ↑↓ history · ctrl+u clears the line · ctrl+c twice to quit</Text>
                 </Box>
               ),
             });
@@ -210,8 +218,13 @@ export function App({ session, version }: { session: Session; version: string })
           }
           case "memory": {
             const turn = arg ? Number(arg) : undefined;
-            const text = await session.gateway.memory(session.project, turn);
-            push({ kind: "info", node: <Markdown text={text.trim()} /> });
+            try {
+              const text = await session.gateway.memory(session.project, turn);
+              push({ kind: "info", node: <Markdown text={text.trim()} /> });
+            } catch (err) {
+              if ((err as { status?: number }).status !== 404) throw err;
+              push({ kind: "info", node: <Text dimColor>{turn ? `No turn ${turn} in this project.` : "No memory yet — the ledger starts with your first task here."}</Text> });
+            }
             break;
           }
           case "diff":
@@ -296,6 +309,12 @@ export function App({ session, version }: { session: Session; version: string })
       return;
     }
     if (key.ctrl && ch === "d" && !input) exit();
+    if (key.ctrl && ch === "u" && !running) {
+      clearedAt.current = Date.now();
+      replaceInput("");
+      setHistoryIndex(null);
+      return;
+    }
     if (key.escape && running) {
       void session.cancel();
       setPhase("cancelling");
@@ -305,15 +324,15 @@ export function App({ session, version }: { session: Session; version: string })
     if (key.upArrow) {
       const i = historyIndex === null ? history.length - 1 : Math.max(0, historyIndex - 1);
       setHistoryIndex(i);
-      setInput(history[i]!);
+      replaceInput(history[i]!);
     } else if (key.downArrow && historyIndex !== null) {
       const i = historyIndex + 1;
       if (i >= history.length) {
         setHistoryIndex(null);
-        setInput("");
+        replaceInput("");
       } else {
         setHistoryIndex(i);
-        setInput(history[i]!);
+        replaceInput(history[i]!);
       }
     }
   });
@@ -344,8 +363,10 @@ export function App({ session, version }: { session: Session; version: string })
       <Box borderStyle="round" borderColor={running ? "gray" : ACCENT} paddingX={1} marginTop={1}>
         <Text color={ACCENT}>› </Text>
         <TextInput
+          key={inputKey}
           value={input}
           onChange={(v) => {
+            if (Date.now() - clearedAt.current < 100) return;
             setInput(v);
             setHistoryIndex(null);
           }}
