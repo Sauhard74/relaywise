@@ -5,9 +5,9 @@ import type { Session } from "./session.ts";
 const tty = process.stdout.isTTY;
 const c = (code: string) => (s: string) => (tty ? `\x1b[${code}m${s}\x1b[0m` : s);
 const dim = c("2");
-const green = c("32");
+const turq = c("38;2;48;213;200"); // jev turquoise
 const red = c("31");
-const accent = c("36");
+const accent = c("38;2;48;213;200");
 
 export async function printMode(session: Session, prompt: string, json: boolean): Promise<number> {
   const err = (s: string) => process.stderr.write(`${s}\n`);
@@ -54,7 +54,7 @@ export async function printMode(session: Session, prompt: string, json: boolean)
   } else {
     const ok = r.status === "completed";
     const files = result.stats ? ` · ${result.stats.files.length} files +${result.stats.added} −${result.stats.removed}` : "";
-    err(`${ok ? green("✓ done") : red(`✗ ${r.status}`)}${dim(` · ${usd(r.metadata.cost_usd)} · ${duration(r.metadata.duration_ms)}${files}`)}`);
+    err(`${ok ? turq("✓ done") : red(`✗ ${r.status}`)}${dim(` · ${usd(r.metadata.cost_usd)} · ${duration(r.metadata.duration_ms)}${files}`)}`);
     if (r.error && !ok) err(red(clip(r.error.message, 400)));
     if (result.applyError) err(red(`couldn't apply the change locally: ${result.applyError}`));
   }

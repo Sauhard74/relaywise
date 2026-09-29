@@ -244,7 +244,7 @@ export function App({ session, version }: { session: Session; version: string })
               node: (
                 <Text>
                   {s.totals.runs} runs · {usd(s.totals.cost_usd)} spent
-                  {s.savings.runs_counted ? <Text color="green"> · {usd(Math.max(0, s.savings.saved_usd))} saved vs always top-tier</Text> : null}
+                  {s.savings.runs_counted ? <Text color={ACCENT}> · {usd(Math.max(0, s.savings.saved_usd))} saved vs always top-tier</Text> : null}
                 </Text>
               ),
             });
@@ -264,7 +264,7 @@ export function App({ session, version }: { session: Session; version: string })
                   </Text>
                   {h.harnesses.map((x) => (
                     <Text key={x.base}>
-                      <Text color={x.available ? "green" : "gray"}>{x.available ? "●" : "○"}</Text> {x.base.padEnd(12)}
+                      <Text color={x.available ? ACCENT : "gray"}>{x.available ? "●" : "○"}</Text> {x.base.padEnd(12)}
                       <Text dimColor>{x.available ? (x.routing ? `routing: ${x.routing.engine}` : "ready") : (x.unavailable_reasons ?? []).join("; ")}</Text>
                     </Text>
                   ))}
@@ -419,7 +419,7 @@ function EntryView({ entry, session, version }: { entry: Entry; session: Session
               <Text dimColor>agents   </Text>
               {entry.agents.map((a) => (
                 <Text key={a.name} color={a.available ? undefined : "gray"}>
-                  <Text color={a.available ? "green" : "gray"}>{a.available ? "●" : "○"}</Text> {a.name}
+                  <Text color={a.available ? ACCENT : "gray"}>{a.available ? "●" : "○"}</Text> {a.name}
                   {"  "}
                 </Text>
               ))}

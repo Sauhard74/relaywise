@@ -1,6 +1,7 @@
 import type { ResponseObject, RouteDecision } from "./client.ts";
 
-export const ACCENT = "#7fc8b1";
+/** jev turquoise. */
+export const ACCENT = "#30d5c8";
 export const DIFFICULTY = ["", "trivial", "easy", "moderate", "hard", "very hard"];
 
 export function usd(v: number | undefined | null): string {
@@ -46,7 +47,7 @@ export function toolLine(name: string, args: string): { name: string; detail: st
 export function statusGlyph(r: ResponseObject): { glyph: string; color: string; label: string } {
   switch (r.status) {
     case "completed":
-      return { glyph: "✓", color: "green", label: "done" };
+      return { glyph: "✓", color: ACCENT, label: "done" };
     case "cancelled":
       return { glyph: "■", color: "yellow", label: "cancelled" };
     case "incomplete":

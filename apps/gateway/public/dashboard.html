@@ -3,213 +3,424 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>jev-route</title>
+<title>jev</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --bg: #f6f5f1; --panel: #ffffff; --ink: #1d1c1a; --muted: #6d6a63; --line: #e3e0d8;
-    --accent: #2f5d50; --accent-ink: #ffffff; --good: #2f7a4a; --bad: #b13c2e; --warn: #9a6a12;
-    --code: #f0eee8; --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --bg: #eef4f3; --surface: #f8fbfb; --ink: #10292e; --muted: #5b7479; --rule: #cfe0df;
+    --turq: #19c3b1; --turq-ink: #0b7f74; --turq-wash: #d5f3ef;
+    --fail: #dd5a55; --warn: #c98a12; --focus: #19c3b1;
+    --font: "Schibsted Grotesk", ui-sans-serif, system-ui, -apple-system, sans-serif;
   }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #151514; --panel: #1e1e1c; --ink: #ecebe6; --muted: #9c998f; --line: #33322e;
-      --accent: #7fc0a8; --accent-ink: #10201b; --good: #74c690; --bad: #ef8a7c; --warn: #e2b25c; --code: #262623; }
+    :root {
+      --bg: #0f2226; --surface: #132b30; --ink: #e2f1ef; --muted: #8fa9ad; --rule: #24434a;
+      --turq: #3fe0cf; --turq-ink: #3fe0cf; --turq-wash: #17403f; --fail: #f07b72; --warn: #e3ac45;
+    }
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 18px 24px; border-bottom: 1px solid var(--line); }
-  h1 { font-size: 18px; margin: 0; letter-spacing: -0.01em; }
-  h1 span { color: var(--muted); font-weight: 400; }
-  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
-  main { max-width: 1180px; margin: 0 auto; padding: 24px; display: grid; gap: 20px; }
-  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; min-width: 0; }
-  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
-  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
-  .tile .k { color: var(--muted); font-size: 12px; }
-  .tile .v { font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
-  .grid2 { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; }
-  @media (max-width: 860px) { .grid2 { grid-template-columns: 1fr; } main { padding: 16px; } header { padding: 14px 16px; } }
-  textarea, input, select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; }
-  textarea { min-height: 96px; resize: vertical; }
-  .row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; align-items: center; }
-  .row > * { flex: 1 1 140px; }
-  button { font: inherit; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); border-radius: 8px; padding: 8px 14px; cursor: pointer; flex: 0 0 auto; }
-  button.ghost { background: transparent; color: var(--accent); }
-  button:disabled { opacity: 0.5; cursor: default; }
-  #keybox { display: flex; gap: 8px; align-items: center; }
-  #keybox input { width: 240px; }
-  pre, .out { font-family: var(--mono); font-size: 13px; background: var(--code); border-radius: 8px; padding: 12px; overflow: auto; white-space: pre-wrap; word-break: break-word; margin: 0; max-height: 420px; }
-  .route { margin-top: 12px; font-size: 14px; }
-  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); font-size: 12px; color: var(--muted); margin-right: 4px; white-space: nowrap; }
-  .pill.jev { color: var(--accent); border-color: var(--accent); }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  th { color: var(--muted); font-weight: 600; font-size: 12px; }
-  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
-  .scroll { overflow-x: auto; }
-  .completed { color: var(--good); } .failed { color: var(--bad); } .cancelled, .in_progress { color: var(--warn); }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 400 15px/1.5 var(--font); }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 28px; }
   .muted { color: var(--muted); }
-  .tool { color: var(--muted); }
-  .bar { height: 8px; border-radius: 4px; background: var(--accent); }
-  .mix td { border: 0; padding: 4px 6px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .num, .runs .right, .cands .muted { font-variant-numeric: tabular-nums; }
+
+  /* header */
+  header { padding: 26px 0 22px; }
+  .top { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: baseline; gap: 16px; }
+  .brand h1 { margin: 0; font-size: 52px; line-height: .9; font-weight: 800; letter-spacing: -0.045em; }
+  .brand h1 span { color: var(--turq); }
+  .brand p { margin: 0; color: var(--muted); max-width: 30ch; line-height: 1.35; }
+  .agents { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; }
+  .agent { display: inline-flex; align-items: center; gap: 7px; font-weight: 500; }
+  .agent i { width: 9px; height: 9px; border-radius: 50%; background: var(--turq); }
+  .agent.off { color: var(--muted); } .agent.off i { background: transparent; border: 1.5px solid var(--muted); }
+  .engine { color: var(--muted); }
+  .engine b { color: var(--ink); font-weight: 600; }
+
+  /* composer */
+  .composer { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 0; background: var(--surface); border: 1px solid var(--rule); border-radius: 18px; overflow: hidden; }
+  .ask { padding: 22px; border-right: 1px solid var(--rule); display: flex; flex-direction: column; gap: 14px; }
+  .ask textarea { width: 100%; min-height: 120px; resize: vertical; border: 0; background: transparent; font-size: 19px; line-height: 1.4; padding: 0; }
+  .ask textarea::placeholder { color: var(--muted); }
+  .ask textarea:focus-visible { outline: none; }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+  .field { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); }
+  .field select, .field input { border: 1px solid var(--rule); background: var(--bg); border-radius: 9px; padding: 6px 9px; color: var(--ink); }
+  .field input { width: 118px; }
+  .seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 10px; padding: 2px; background: var(--bg); }
+  .seg label { position: relative; }
+  .seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .seg span { display: block; padding: 5px 11px; border-radius: 8px; color: var(--muted); }
+  .seg input:checked + span { background: var(--ink); color: var(--bg); }
+  .seg input:focus-visible + span { outline: 2px solid var(--focus); }
+  .actions { display: flex; gap: 10px; align-items: center; margin-top: 2px; }
+  .btn { border: 1px solid var(--ink); background: var(--ink); color: var(--bg); padding: 9px 18px; border-radius: 11px; font-weight: 600; cursor: pointer; }
+  .btn.quiet { background: transparent; color: var(--ink); border-color: var(--rule); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .hint { color: var(--muted); font-size: 13px; }
+
+  .decision { padding: 22px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .decision .empty { color: var(--muted); margin: auto 0; max-width: 34ch; }
+  .pick { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
+  .pick small { display: block; font-size: 15px; font-weight: 500; color: var(--muted); letter-spacing: 0; margin-top: 4px; }
+  .why { margin: 0; }
+  .cands { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(60px, 1fr) auto; gap: 7px 12px; align-items: center; font-size: 13.5px; }
+  .cands .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cands .bar { height: 8px; border-radius: 4px; background: var(--rule); overflow: hidden; }
+  .cands .bar b { display: block; height: 100%; background: var(--muted); border-radius: 4px; transform-origin: left; animation: grow .6s cubic-bezier(.2,.8,.2,1) both; }
+  .cands .top b { background: var(--turq); }
+  .cands .top.name { font-weight: 600; }
+  @keyframes grow { from { transform: scaleX(0); } }
+  .stream { border-top: 1px solid var(--rule); padding: 18px 22px; max-height: 340px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
+  .stream .tool { color: var(--muted); font-size: 13.5px; }
+  .stream .end { margin-top: 10px; font-weight: 600; }
+
+  /* board */
+  section { margin-top: 44px; }
+  .sechead { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+  h2 { margin: 0; font-size: 22px; letter-spacing: -0.015em; font-weight: 700; }
+  .legend { display: flex; gap: 16px; color: var(--muted); font-size: 13px; flex-wrap: wrap; }
+  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
+  .board { position: relative; }
+  .board svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .lane-label { font: 600 14px var(--font); fill: var(--ink); }
+  .lane-sub { font: 400 12px var(--font); fill: var(--muted); }
+  .lane-rule { stroke: var(--rule); }
+  .dot { cursor: pointer; transition: r .15s; }
+  .dot:focus-visible { outline: none; stroke: var(--ink); stroke-width: 2.5; }
+  .dot.sel { stroke: var(--ink); stroke-width: 2.5; }
+  .tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); padding: 9px 12px; border-radius: 10px; font-size: 13px; max-width: 320px; line-height: 1.35; opacity: 0; transform: translateY(4px); transition: opacity .12s, transform .12s; z-index: 5; }
+  .tip.on { opacity: 1; transform: none; }
+  .tip b { font-weight: 600; }
+  .summary { margin: 18px 0 0; font-size: 18px; max-width: 70ch; }
+  .summary strong { font-weight: 700; }
+  .summary .saved { color: var(--turq-ink); }
+
+  /* runs + detail */
+  .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+  .runs { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule); }
+  .runs li { border-bottom: 1px solid var(--rule); }
+  .runs button { all: unset; box-sizing: border-box; width: 100%; display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 12px; padding: 12px 6px; cursor: pointer; align-items: start; }
+  .runs button:hover { background: color-mix(in srgb, var(--turq-wash) 55%, transparent); }
+  .runs button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+  .runs li.sel button { background: var(--turq-wash); }
+  .runs .st { width: 9px; height: 9px; border-radius: 50%; margin-top: 7px; }
+  .runs .task { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .runs .meta { font-size: 13px; color: var(--muted); display: flex; gap: 0 10px; flex-wrap: wrap; line-height: 1.45; }
+  .runs .right { text-align: right; font-size: 13.5px; }
+  .runs .right .muted { font-size: 12.5px; }
+  .detail { position: sticky; top: 20px; background: var(--surface); border: 1px solid var(--rule); border-radius: 18px; padding: 22px; min-height: 200px; }
+  .detail h3 { margin: 0 0 4px; font-size: 18px; line-height: 1.35; font-weight: 600; }
+  .detail .kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 16px 0; font-size: 14px; }
+  .detail .kv dt { color: var(--muted); }
+  .detail .kv dd { margin: 0; }
+  .detail pre { white-space: pre-wrap; word-break: break-word; font: inherit; margin: 0; max-height: 260px; overflow: auto; padding: 14px; background: var(--bg); border-radius: 12px; }
+  .files { margin: 12px 0 0; padding: 0; list-style: none; font-size: 14px; }
+  .files li { padding: 3px 0; }
+  .files b { display: inline-block; width: 18px; color: var(--turq-ink); }
+  .fb { display: flex; gap: 10px; align-items: center; margin-top: 18px; flex-wrap: wrap; }
+  .fb p { margin: 0; color: var(--muted); font-size: 13.5px; }
+  .status-completed { color: var(--turq-ink); } .status-failed { color: var(--fail); } .status-cancelled, .status-incomplete, .status-in_progress { color: var(--warn); }
+
+  .connect { display: none; margin: 0 0 20px; padding: 16px 18px; border-radius: 14px; background: var(--surface); border: 1px solid var(--fail); gap: 10px; align-items: center; flex-wrap: wrap; }
+  .connect.on { display: flex; }
+  .connect input { border: 1px solid var(--rule); background: var(--bg); border-radius: 9px; padding: 7px 10px; min-width: 260px; }
+  footer { padding: 48px 0 40px; color: var(--muted); font-size: 13px; }
+
+  @media (max-width: 860px) {
+    .wrap { padding: 0 16px; }
+    .brand h1 { font-size: 40px; }
+    .composer, .split { grid-template-columns: 1fr; }
+    .ask { border-right: 0; border-bottom: 1px solid var(--rule); }
+    .detail { position: static; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
-<header>
-  <h1>jev-route <span>· agent harnesses, routed by Jev</span></h1>
-  <div id="keybox"><input id="key" type="password" placeholder="API key (if required)" autocomplete="off" /><button class="ghost" id="saveKey">Save</button></div>
-</header>
-<main>
-  <section class="tiles" id="tiles"></section>
-
-  <section class="grid2">
-    <div class="panel">
-      <h2>Playground</h2>
-      <textarea id="prompt" placeholder="Describe a task, e.g. “Add input validation to the signup handler and write tests”"></textarea>
-      <div class="row">
-        <select id="harness"><option value="auto">auto (Jev picks)</option></select>
-        <select id="objective"><option value="balanced">balanced</option><option value="cheapest">cheapest</option><option value="best">best</option></select>
-        <input id="budget" type="number" min="0" step="0.01" placeholder="max $ (optional)" />
+<div class="wrap">
+  <header>
+    <div class="top">
+      <div class="brand">
+        <h1>jev<span>.</span></h1>
+        <p>Every task goes to the agent, model and effort that fit it.</p>
       </div>
-      <div class="row">
-        <button id="run">Run</button>
-        <button class="ghost" id="dry">Route only</button>
-        <button class="ghost" id="cancel" disabled>Cancel</button>
-        <span id="status" class="muted" style="flex:1 1 auto"></span>
+      <div>
+        <div class="agents" id="agents" aria-label="Agents"></div>
+        <div class="engine" id="engine"></div>
       </div>
-      <div id="route" class="route"></div>
-      <div class="out" id="out" style="margin-top:12px; min-height: 60px;"></div>
     </div>
-    <div class="panel">
-      <h2>Routing mix</h2>
-      <table class="mix" id="mix"></table>
-      <h2 style="margin-top:18px">Harnesses</h2>
-      <div id="harnesses"></div>
+  </header>
+
+  <div class="connect" id="connect" role="alert">
+    <span>This gateway needs an API key.</span>
+    <input id="key" type="password" placeholder="Paste a key from JEV_ROUTE_API_KEYS" autocomplete="off" aria-label="API key" />
+    <button class="btn" id="saveKey">Connect</button>
+  </div>
+
+  <div class="composer">
+    <form class="ask" id="ask">
+      <label class="sr" for="prompt">Task</label>
+      <textarea id="prompt" placeholder="Describe a task — “add input validation to the signup handler and test it”"></textarea>
+      <div class="controls">
+        <label class="field">Agent <select id="harness"><option value="auto">Let Jev choose</option></select></label>
+        <div class="seg" role="radiogroup" aria-label="Optimise for">
+          <label><input type="radio" name="obj" value="cheapest" /><span>Cheapest</span></label>
+          <label><input type="radio" name="obj" value="balanced" checked /><span>Balanced</span></label>
+          <label><input type="radio" name="obj" value="best" /><span>Best</span></label>
+        </div>
+        <label class="field">Budget <input id="budget" type="number" min="0" step="0.05" placeholder="no limit" /></label>
+        <label class="field">Project <input id="project" type="text" placeholder="none" /></label>
+      </div>
+      <div class="actions">
+        <button class="btn" id="run" type="submit">Run task</button>
+        <button class="btn quiet" id="preview" type="button">Preview route</button>
+        <button class="btn quiet" id="cancel" type="button" hidden>Stop</button>
+        <span class="hint" id="state" aria-live="polite"></span>
+      </div>
+    </form>
+    <div class="decision" id="decision">
+      <p class="empty">Jev reads the task, scores every agent that can run it, and picks one. Preview a route to see its reasoning before spending anything.</p>
+    </div>
+  </div>
+  <div class="stream" id="stream" hidden aria-live="polite"></div>
+
+  <section aria-labelledby="board-h">
+    <div class="sechead">
+      <h2 id="board-h">Where your tasks went</h2>
+      <div class="legend"><span><i style="background:var(--turq)"></i>Done</span><span><i style="background:var(--fail)"></i>Failed</span><span><i style="background:var(--warn)"></i>Stopped</span><span>Larger dot, higher cost</span></div>
+    </div>
+    <div class="board" id="board"><div class="tip" id="tip"></div></div>
+    <p class="summary" id="summary"></p>
+  </section>
+
+  <section aria-labelledby="runs-h">
+    <div class="sechead"><h2 id="runs-h">Recent runs</h2><span class="muted" id="runsNote"></span></div>
+    <div class="split">
+      <ul class="runs" id="runs"></ul>
+      <aside class="detail" id="detail"><p class="muted">Pick a run to see why it was routed where it was, what it cost, and what changed.</p></aside>
     </div>
   </section>
 
-  <section class="panel">
-    <h2>Recent runs</h2>
-    <div class="scroll"><table id="runs"></table></div>
-  </section>
-</main>
+  <footer>Also available in your terminal: run <b>jev</b> inside any repo.</footer>
+</div>
+
 <script>
 const $ = (id) => document.getElementById(id);
-let apiKey = "";
-try { apiKey = localStorage.getItem("jevRouteKey") || ""; } catch {}
-$("key").value = apiKey;
-$("saveKey").onclick = () => { apiKey = $("key").value.trim(); try { localStorage.setItem("jevRouteKey", apiKey); } catch {} refresh(); };
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const usd = (v) => v == null ? "—" : v === 0 ? "$0" : v < 0.01 ? "$" + v.toFixed(4) : "$" + v.toFixed(2);
+const dur = (ms) => ms == null ? "—" : ms < 1000 ? ms + " ms" : ms < 60000 ? (ms / 1000).toFixed(1) + " s" : Math.floor(ms / 60000) + " min " + Math.round((ms % 60000) / 1000) + " s";
+const DIFF = ["", "trivial", "easy", "moderate", "hard", "very hard"];
+const LANES = ["claude-code", "codex", "opencode", "hermes", "mock"];
+const NAMES = { "claude-code": "Claude Code", codex: "Codex", opencode: "OpenCode", hermes: "Hermes", mock: "Mock" };
+const statusColor = (s) => s === "completed" ? "var(--turq)" : s === "failed" ? "var(--fail)" : "var(--warn)";
+const statusWord = (s) => ({ completed: "done", failed: "failed", cancelled: "stopped", incomplete: "incomplete", in_progress: "running" }[s] || s);
+const shortModel = (m) => String(m || "").split("/").pop();
+const ago = (sec) => { const d = Date.now() / 1000 - sec; return d < 60 ? "just now" : d < 3600 ? Math.floor(d / 60) + " min ago" : d < 86400 ? Math.floor(d / 3600) + " h ago" : new Date(sec * 1000).toLocaleDateString(); };
 
-const headers = () => ({ "Content-Type": "application/json", ...(apiKey ? { Authorization: "Bearer " + apiKey } : {}) });
-const api = async (path, init = {}) => {
+let key = ""; try { key = localStorage.getItem("jevKey") || ""; } catch {}
+let runs = [], selected = null, current = null, harnesses = [];
+const headers = () => ({ "Content-Type": "application/json", ...(key ? { Authorization: "Bearer " + key } : {}) });
+async function api(path, init = {}) {
   const res = await fetch(path, { ...init, headers: { ...headers(), ...(init.headers || {}) } });
+  if (res.status === 401) { $("connect").classList.add("on"); throw new Error("This gateway needs an API key."); }
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body?.error?.message || res.statusText);
   return body;
-};
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const usd = (v) => v == null ? "—" : v < 0.01 ? "$" + v.toFixed(4) : "$" + v.toFixed(2);
-const ms = (v) => v == null ? "—" : v < 1000 ? v + " ms" : (v / 1000).toFixed(1) + " s";
-const DIFF = ["", "trivial", "easy", "moderate", "hard", "very hard"];
+}
+$("saveKey").onclick = () => { key = $("key").value.trim(); try { localStorage.setItem("jevKey", key); } catch {} $("connect").classList.remove("on"); refresh(); };
 
-function body() {
-  const b = { input: $("prompt").value, metadata: { harness_id: $("harness").value }, routing: { objective: $("objective").value } };
-  const max = parseFloat($("budget").value);
-  if (max > 0) b.routing.max_cost_usd = max;
+function settings() {
+  const b = { input: $("prompt").value.trim(), metadata: { harness_id: $("harness").value }, routing: { objective: document.querySelector("input[name=obj]:checked").value } };
+  const max = parseFloat($("budget").value); if (max > 0) b.routing.max_cost_usd = max;
+  const p = $("project").value.trim(); if (p) b.metadata.project_id = p;
   return b;
 }
 
-function renderRoute(d) {
-  if (!d) { $("route").innerHTML = ""; return; }
-  const cands = (d.candidates || []).map((c) =>
-    `<tr><td>${esc(c.option_id)}</td><td class="num">${c.score.toFixed(2)}</td><td class="num">${usd(c.est_cost_usd)}</td><td class="num">${c.jev_preference.toFixed(2)}</td><td class="num">${c.prior_bonus.toFixed(2)}</td></tr>`).join("");
-  $("route").innerHTML = `
-    <div><span class="pill ${d.source === "jev" || d.source === "cache" ? "jev" : ""}">${esc(d.source)}</span>
-    <span class="pill">${esc(d.features.task_type)}</span><span class="pill">${DIFF[d.features.difficulty]}</span>
-    <span class="pill">${esc(d.latency_ms)} ms</span></div>
-    <p style="margin:8px 0"><b>${esc(d.harness)}</b> · ${esc(d.model)}${d.effort ? " · effort " + esc(d.effort) : ""} · est. ${usd(d.est_cost_usd)}<br><span class="muted">${esc(d.reason)}${d.fallback_reason ? " — fallback: " + esc(d.fallback_reason) : ""}</span></p>
-    ${cands ? `<div class="scroll"><table><tr><th>candidate</th><th class="num">score</th><th class="num">est.</th><th class="num">jev</th><th class="num">prior</th></tr>${cands}</table></div>` : ""}`;
+/** Model name, plus the agent only when two candidates share a model. */
+function candLabel(id, all) {
+  const [agent, ...rest] = id.split(":"); const model = shortModel(rest.join(":"));
+  const dup = all.filter((c) => shortModel(c.option_id.split(":").slice(1).join(":")) === model).length > 1;
+  return dup ? `${model} (${NAMES[agent] || agent})` : model;
 }
 
-$("dry").onclick = async () => {
-  $("status").textContent = "routing…";
-  try { renderRoute(await api("/v1/route", { method: "POST", body: JSON.stringify(body()) })); $("status").textContent = ""; }
-  catch (e) { $("status").textContent = e.message; }
-};
+function renderDecision(d) {
+  if (!d) return;
+  const maxScore = Math.max(...d.candidates.map((c) => c.score), 0.01), minScore = Math.min(...d.candidates.map((c) => c.score), 0);
+  const scale = (s) => 8 + 92 * (s - minScore) / Math.max(0.0001, maxScore - minScore);
+  const source = d.source === "jev" ? `Jev decided in ${d.latency_ms} ms` : d.source === "cache" ? "Jev (cached answer)" : d.source === "heuristic" ? "keyword fallback (Jev unavailable)" : "pinned by you";
+  $("decision").innerHTML = `
+    <div class="pick">${esc(NAMES[d.harness] || d.harness)} with ${esc(shortModel(d.model))}${d.effort ? `, ${esc(d.effort)} effort` : ""}
+      <small>${esc(DIFF[d.features?.difficulty] || "")} ${esc((d.features?.task_type || "").replace("_", " "))} task, estimated ${usd(d.est_cost_usd)}. ${esc(source)}.</small></div>
+    ${d.handoff ? `<p class="why">Handoff: this turn moves to a different agent, which is briefed from the project ledger.</p>` : ""}
+    ${d.candidates.length ? `<div class="cands" role="list" aria-label="Candidates">${d.candidates.map((c, i) => `
+      <span class="name ${i === 0 ? "top" : ""}" role="listitem" title="${esc(c.option_id)}">${esc(candLabel(c.option_id, d.candidates))}</span>
+      <span class="bar ${i === 0 ? "top" : ""}"><b style="width:${scale(c.score)}%;animation-delay:${i * 60}ms"></b></span>
+      <span class="num muted">${usd(c.est_cost_usd)}</span>`).join("")}</div>` : ""}`;
+}
 
-let currentId = null;
-$("cancel").onclick = async () => { if (currentId) await api(`/v1/responses/${currentId}/cancel`, { method: "POST" }).catch(() => {}); };
+async function preview() {
+  const b = settings(); if (!b.input) { $("prompt").focus(); return; }
+  $("state").textContent = "Asking Jev…";
+  try { renderDecision(await api("/v1/route", { method: "POST", body: JSON.stringify(b) })); $("state").textContent = ""; }
+  catch (e) { $("state").textContent = e.message; }
+}
 
-$("run").onclick = async () => {
-  $("out").textContent = ""; renderRoute(null); $("run").disabled = true; $("status").textContent = "starting…";
+async function runTask(ev) {
+  ev.preventDefault();
+  const b = settings(); if (!b.input) { $("prompt").focus(); return; }
+  const out = $("stream"); out.hidden = false; out.innerHTML = "";
+  $("run").disabled = true; $("preview").disabled = true; $("cancel").hidden = false; $("state").textContent = "Routing…";
+  let text = null;
+  const line = (cls, s) => { const d = document.createElement("div"); if (cls) d.className = cls; d.textContent = s; out.append(d); out.scrollTop = out.scrollHeight; return d; };
   try {
-    const res = await fetch("/v1/responses", { method: "POST", headers: headers(), body: JSON.stringify({ ...body(), stream: true }) });
-    if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b?.error?.message || res.statusText); }
-    const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = "";
+    const res = await fetch("/v1/responses", { method: "POST", headers: headers(), body: JSON.stringify({ ...b, stream: true }) });
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e?.error?.message || res.statusText); }
+    const reader = res.body.getReader(), dec = new TextDecoder(); let buf = "";
     while (true) {
       const { value, done } = await reader.read(); if (done) break;
-      buf += dec.decode(value, { stream: true });
-      let i;
+      buf += dec.decode(value, { stream: true }); let i;
       while ((i = buf.indexOf("\n\n")) >= 0) {
-        const frame = buf.slice(0, i); buf = buf.slice(i + 2);
-        const line = frame.split("\n").find((l) => l.startsWith("data: ")); if (!line) continue;
-        onEvent(JSON.parse(line.slice(6)));
+        const f = buf.slice(0, i); buf = buf.slice(i + 2);
+        const l = f.split("\n").find((x) => x.startsWith("data: ")); if (!l) continue;
+        const e = JSON.parse(l.slice(6));
+        if (e.type === "response.created") { current = e.response.id; renderDecision(e.response.metadata.route); $("state").textContent = `${NAMES[e.response.metadata.harness_id] || e.response.metadata.harness_id} is working…`; }
+        else if (e.type === "response.output_text.delta") { if (!text) text = line("", ""); text.textContent += e.delta; out.scrollTop = out.scrollHeight; }
+        else if (e.type === "response.output_item.done" && e.item.type === "message") text = null;
+        else if (e.type === "response.output_item.done" && e.item.type === "function_call") { text = null; let a = e.item.arguments; try { const p = JSON.parse(a); a = p.command ?? p.file_path ?? p.path ?? a; if (Array.isArray(a)) a = a.join(" "); } catch {} line("tool", `${e.item.name}  ${String(a).slice(0, 120)}`); }
+        else if (/^response\.(completed|failed|incomplete)$/.test(e.type)) {
+          const r = e.response, m = r.metadata, files = m.checkpoint?.files?.length;
+          const d = line("end " + "status-" + r.status, `${statusWord(r.status)[0].toUpperCase() + statusWord(r.status).slice(1)} in ${dur(m.duration_ms)} for ${usd(m.cost_usd)}${files ? `, ${files} file${files === 1 ? "" : "s"} changed` : ""}.${r.error ? " " + r.error.message : ""}`);
+          $("state").textContent = ""; selected = r.id;
+        }
       }
     }
-  } catch (e) { $("status").textContent = e.message; }
-  $("run").disabled = false; $("cancel").disabled = true; currentId = null; refresh();
-};
+  } catch (e) { line("end status-failed", e.message); $("state").textContent = ""; }
+  current = null; $("run").disabled = false; $("preview").disabled = false; $("cancel").hidden = true;
+  await refresh(); if (selected) showDetail(selected);
+}
+$("ask").addEventListener("submit", runTask);
+$("preview").onclick = preview;
+$("cancel").onclick = () => { if (current) api(`/v1/responses/${current}/cancel`, { method: "POST" }).catch(() => {}); };
+$("prompt").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) $("ask").requestSubmit(); });
 
-function onEvent(e) {
-  const out = $("out");
-  if (e.type === "response.created") {
-    currentId = e.response.id; $("cancel").disabled = false;
-    renderRoute(e.response.metadata.route); $("status").textContent = "running…";
-  } else if (e.type === "response.output_text.delta") {
-    out.append(document.createTextNode(e.delta));
-  } else if (e.type === "response.output_item.done" && e.item.type === "function_call") {
-    const span = document.createElement("div"); span.className = "tool";
-    span.textContent = `⚙ ${e.item.name} ${e.item.arguments.slice(0, 140)}`; out.append(span);
-  } else if (e.type === "response.output_item.done" && e.item.type === "message") {
-    out.append(document.createTextNode("\n"));
-  } else if (e.type === "response.completed" || e.type === "response.failed" || e.type === "response.incomplete") {
-    const r = e.response;
-    $("status").innerHTML = `<span class="${esc(r.status)}">${esc(r.status)}</span> · ${usd(r.metadata.cost_usd)} · ${ms(r.metadata.duration_ms)}${r.error ? " · " + esc(r.error.message) : ""}`;
-  }
+function renderHeader(h, stats) {
+  harnesses = h.harnesses;
+  const auto = harnesses.find((x) => x.base === "auto");
+  $("agents").innerHTML = harnesses.filter((x) => x.base !== "auto").map((x) =>
+    `<span class="agent ${x.available ? "" : "off"}" title="${esc(x.available ? "Ready" : (x.unavailable_reasons || []).join("; "))}"><i></i>${esc(NAMES[x.base] || x.name)}</span>`).join("");
+  const eng = auto?.routing?.engine;
+  $("engine").innerHTML = eng === "jev" ? `Routing with <b>${esc(auto.routing.model)}</b>` : `Routing with <b>keyword rules</b>, set TYPESAFE_API_KEY for Jev`;
+  const sel = $("harness"), cur = sel.value;
+  sel.innerHTML = `<option value="auto">Let Jev choose</option>` + harnesses.filter((x) => x.base !== "auto").map((x) =>
+    `<option value="${esc(x.base)}" ${x.available ? "" : "disabled"}>${esc(NAMES[x.base] || x.name)}${x.available ? "" : " (not set up)"}</option>`).join("");
+  sel.value = cur || "auto";
+}
+
+function renderBoard() {
+  const box = $("board"), tip = $("tip");
+  box.querySelector("svg")?.remove();
+  const lanes = LANES.filter((l) => harnesses.some((h) => h.base === l) || runs.some((r) => r.harness_id === l));
+  const W = Math.max(320, box.clientWidth), labelW = W < 560 ? 0 : 150, laneH = W < 560 ? 64 : 56, top = W < 560 ? 18 : 6;
+  const H = lanes.length * laneH + 28;
+  // Runs are spaced by order, not clock time, so bursts and quiet hours both stay readable.
+  const ordered = runs.slice().sort((a, b) => a.created_at - b.created_at);
+  const pos = new Map(ordered.map((r, i) => [r.id, ordered.length > 1 ? i / (ordered.length - 1) : 0.5]));
+  const x = (r) => labelW + 18 + (W - labelW - 36) * pos.get(r.id);
+  const t0 = ordered[0]?.created_at ?? Date.now() / 1000;
+  const maxCost = Math.max(...runs.map((r) => r.cost_usd || 0), 0.0001);
+  const rad = (c) => 4.5 + 13 * Math.sqrt((c || 0) / maxCost);
+  const counts = Object.fromEntries(lanes.map((l) => [l, runs.filter((r) => r.harness_id === l)]));
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Runs by agent over time">`;
+  lanes.forEach((l, i) => {
+    const y = top + i * laneH + laneH / 2, rs = counts[l], spent = rs.reduce((s, r) => s + (r.cost_usd || 0), 0);
+    svg += `<line class="lane-rule" x1="${labelW}" x2="${W}" y1="${y}" y2="${y}" />`;
+    if (labelW) svg += `<text class="lane-label" x="0" y="${y - 3}">${esc(NAMES[l] || l)}</text><text class="lane-sub" x="0" y="${y + 14}">${rs.length} run${rs.length === 1 ? "" : "s"}, ${usd(spent)}</text>`;
+    else svg += `<text class="lane-sub" x="0" y="${y - 12}">${esc(NAMES[l] || l)}, ${rs.length} run${rs.length === 1 ? "" : "s"}</text>`;
+  });
+  runs.slice().reverse().forEach((r) => {
+    const li = lanes.indexOf(r.harness_id); if (li < 0) return;
+    const y = top + li * laneH + laneH / 2;
+    const fill = r.status === "cancelled" || r.status === "incomplete" ? "transparent" : statusColor(r.status);
+    svg += `<circle class="dot ${r.id === selected ? "sel" : ""}" tabindex="0" data-id="${r.id}" cx="${x(r).toFixed(1)}" cy="${y}" r="${rad(r.cost_usd).toFixed(1)}" fill="${fill}" fill-opacity="${r.status === "completed" ? .85 : 1}" stroke="${statusColor(r.status)}" stroke-width="${fill === "transparent" ? 2 : 0}"><title>${esc(r.input_preview)}</title></circle>`;
+  });
+  svg += `<text class="lane-sub" x="${labelW}" y="${H - 4}">${esc(new Date(t0 * 1000).toLocaleString([], { dateStyle: "short", timeStyle: "short" }))}</text><text class="lane-sub" x="${W}" y="${H - 4}" text-anchor="end">latest</text></svg>`;
+  box.insertAdjacentHTML("afterbegin", svg);
+  box.querySelectorAll(".dot").forEach((c) => {
+    const r = runs.find((x) => x.id === c.dataset.id);
+    const show = () => {
+      tip.innerHTML = `<b>${esc(r.input_preview)}</b><br>${esc(shortModel(r.model))}${r.reasoning_effort ? `, ${esc(r.reasoning_effort)}` : ""}. ${statusWord(r.status)} for ${usd(r.cost_usd)} in ${dur(r.duration_ms)}`;
+      const bx = box.getBoundingClientRect(), cb = c.getBoundingClientRect();
+      tip.style.left = Math.min(bx.width - 330, Math.max(0, cb.left - bx.left - 20)) + "px"; tip.style.top = (cb.top - bx.top - tip.offsetHeight - 10) + "px"; tip.classList.add("on");
+    };
+    c.addEventListener("mouseenter", show); c.addEventListener("focus", show);
+    c.addEventListener("mouseleave", () => tip.classList.remove("on")); c.addEventListener("blur", () => tip.classList.remove("on"));
+    c.addEventListener("click", () => showDetail(r.id));
+    c.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); showDetail(r.id); } });
+  });
+}
+
+function renderSummary(stats) {
+  const t = stats.totals || {}, s = stats.savings;
+  if (!t.runs) { $("summary").innerHTML = "Nothing has run yet. Describe a task above, or run <b>jev</b> in a repo."; return; }
+  const rate = Math.round(100 * (t.completed || 0) / t.runs);
+  const saved = s && s.runs_counted && s.saved_usd > 0 ? ` Routing saved <strong class="saved">${usd(s.saved_usd)}</strong> compared with sending every task to the top tier.` : "";
+  $("summary").innerHTML = `<strong>${t.runs}</strong> task${t.runs === 1 ? "" : "s"} run, ${rate}% finished, <strong>${usd(t.cost_usd || 0)}</strong> spent.${saved}`;
+}
+
+function renderRuns() {
+  $("runsNote").textContent = runs.length ? `latest ${runs.length}` : "";
+  $("runs").innerHTML = runs.slice(0, 40).map((r) => `<li class="${r.id === selected ? "sel" : ""}"><button data-id="${r.id}">
+      <span class="st" style="background:${statusColor(r.status)}"></span>
+      <span><span class="task" style="display:block">${esc(r.input_preview)}</span>
+        <span class="meta"><span>${esc(NAMES[r.harness_id] || r.harness_id)}, ${esc(shortModel(r.model))}</span>${r.handoff ? "<span>handoff</span>" : ""}${r.turn ? `<span>turn ${r.turn}</span>` : ""}<span>${ago(r.created_at)}</span></span></span>
+      <span class="right"><span class="num">${usd(r.cost_usd)}</span><br><span class="muted num">${dur(r.duration_ms)}</span></span></button></li>`).join("") ||
+    `<li style="padding:14px 6px" class="muted">No runs yet.</li>`;
+  $("runs").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => showDetail(b.dataset.id)));
+}
+
+async function showDetail(id) {
+  selected = id; renderRuns(); renderBoard();
+  try {
+    const r = await api(`/v1/responses/${id}`), m = r.metadata, d = m.route;
+    const files = m.checkpoint?.files || [];
+    $("detail").innerHTML = `
+      <h3>${esc(runs.find((x) => x.id === id)?.input_preview || "")}</h3>
+      <span class="status-${esc(r.status)}">${esc(statusWord(r.status))}</span>
+      <dl class="kv">
+        <dt>Agent</dt><dd>${esc(NAMES[m.harness_id] || m.harness_id)}, ${esc(shortModel(r.model))}${m.reasoning_effort ? `, ${esc(m.reasoning_effort)} effort` : ""}</dd>
+        ${d ? `<dt>Why</dt><dd>${esc(d.reason)}${d.handoff ? " Picked up another agent's work from the ledger." : ""}</dd>` : ""}
+        <dt>Cost</dt><dd class="num">${usd(m.cost_usd)}${d?.est_cost_usd ? ` <span class="muted">(estimated ${usd(d.est_cost_usd)})</span>` : ""}</dd>
+        <dt>Time</dt><dd class="num">${dur(m.duration_ms)}</dd>
+        ${m.project_id ? `<dt>Project</dt><dd>${esc(m.project_id)}${m.checkpoint ? `, turn ${m.checkpoint.turn}` : ""}</dd>` : m.checkpoint ? `<dt>Turn</dt><dd>${m.checkpoint.turn}</dd>` : ""}
+      </dl>
+      ${r.error ? `<p class="status-failed">${esc(r.error.message)}</p>` : ""}
+      ${r.output_text ? `<pre>${esc(r.output_text)}</pre>` : ""}
+      ${files.length ? `<ul class="files">${files.map((f) => `<li><b>${esc(f.status)}</b>${esc(f.path)}</li>`).join("")}</ul>` : ""}
+      ${r.status === "completed" || r.status === "failed" ? `<div class="fb"><button class="btn quiet" data-s="1">It worked</button><button class="btn quiet" data-s="0">It didn't</button><p>Your answer tunes future routing for tasks like this.</p></div>` : ""}`;
+    $("detail").querySelectorAll(".fb button").forEach((b) => b.addEventListener("click", async () => {
+      await api(`/v1/responses/${id}/feedback`, { method: "POST", body: JSON.stringify({ score: Number(b.dataset.s) }) }).catch(() => {});
+      b.closest(".fb").innerHTML = `<p>Thanks. Routing will weigh this in for similar tasks.</p>`;
+    }));
+  } catch (e) { $("detail").innerHTML = `<p class="status-failed">${esc(e.message)}</p>`; }
 }
 
 async function refresh() {
   try {
-    const [stats, runs, harnesses] = await Promise.all([api("/v1/stats"), api("/v1/responses?limit=30"), api("/v1/harnesses")]);
-    const t = stats.totals || {};
-    const rate = t.runs ? Math.round((100 * (t.completed || 0)) / t.runs) + "%" : "—";
-    const s = stats.savings;
-    $("tiles").innerHTML = [
-      ["Runs", t.runs ?? 0], ["Success rate", rate], ["Spend", usd(t.cost_usd || 0)],
-      ["Saved vs top-tier", s && s.runs_counted ? usd(Math.max(0, s.saved_usd)) : "—"],
-      ["Avg duration", ms(t.avg_duration_ms ? Math.round(t.avg_duration_ms) : null)],
-    ].map(([k, v]) => `<div class="tile"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`).join("");
-
-    const byOpt = stats.by_option || []; const max = Math.max(1, ...byOpt.map((o) => o.runs));
-    $("mix").innerHTML = byOpt.length ? byOpt.map((o) => `<tr><td style="width:55%">${esc(o.option_id || o.harness + ":" + o.model)}</td><td style="width:35%"><div class="bar" style="width:${(100 * o.runs) / max}%"></div></td><td class="num">${o.runs}</td></tr>`).join("") : `<tr><td class="muted">No runs yet.</td></tr>`;
-
-    const sel = $("harness"); const cur = sel.value;
-    sel.innerHTML = harnesses.harnesses.map((h) => `<option value="${esc(h.base)}" ${h.available ? "" : "disabled"}>${h.base === "auto" ? "auto (Jev picks)" : esc(h.name)}${h.available ? "" : " — unavailable"}</option>`).join("");
-    sel.value = cur || "auto";
-    $("harnesses").innerHTML = harnesses.harnesses.filter((h) => h.base !== "auto").map((h) =>
-      `<div style="margin-bottom:6px"><b>${esc(h.name)}</b> <span class="${h.available ? "completed" : "failed"}">${h.available ? "ready" : "unavailable"}</span>${h.unavailable_reasons ? `<div class="muted" style="font-size:12px">${esc(h.unavailable_reasons.join("; "))}</div>` : ""}</div>`).join("");
-
-    $("runs").innerHTML = `<tr><th>when</th><th>task</th><th>routed to</th><th>via</th><th>status</th><th class="num">est.</th><th class="num">cost</th><th class="num">time</th></tr>` +
-      runs.data.map((r) => `<tr><td class="muted">${new Date(r.created_at * 1000).toLocaleTimeString()}</td>
-        <td>${esc(r.input_preview)}<div class="muted" style="font-size:12px">${esc(r.task_type || "")}${r.difficulty ? " · " + DIFF[r.difficulty] : ""}</div></td>
-        <td>${esc(r.harness_id)}<div class="muted" style="font-size:12px">${esc(r.model)}${r.reasoning_effort ? " · " + esc(r.reasoning_effort) : ""}</div></td>
-        <td><span class="pill ${r.route_source === "jev" || r.route_source === "cache" ? "jev" : ""}">${esc(r.route_source)}</span>${r.handoff ? `<span class="pill" title="switched agent; briefed from the session ledger">handoff</span>` : ""}${r.turn ? `<div class="muted" style="font-size:12px">turn ${r.turn}</div>` : ""}</td>
-        <td class="${esc(r.status)}">${esc(r.status)}</td><td class="num">${usd(r.est_cost_usd)}</td><td class="num">${usd(r.cost_usd)}</td><td class="num">${ms(r.duration_ms)}</td></tr>`).join("");
-  } catch (e) {
-    $("tiles").innerHTML = `<div class="tile"><div class="k">Error</div><div class="v" style="font-size:15px">${esc(e.message)}</div></div>`;
-  }
+    const [h, stats, list] = await Promise.all([api("/v1/harnesses"), api("/v1/stats"), api("/v1/responses?limit=200")]);
+    runs = list.data; renderHeader(h, stats); renderSummary(stats); renderRuns(); renderBoard();
+  } catch (e) { $("summary").textContent = e.message; }
 }
+window.addEventListener("resize", () => { clearTimeout(window.__rz); window.__rz = setTimeout(renderBoard, 120); });
 refresh();
-setInterval(refresh, 10000);
+setInterval(() => { if (!current) refresh(); }, 15000);
 </script>
 </body>
 </html>
