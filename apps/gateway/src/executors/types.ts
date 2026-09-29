@@ -26,6 +26,8 @@ export interface Executor {
   ensureSandbox(sessionId: string, existingId: string | null, projectId: string | null): Promise<Sandbox>;
   /** Reads a file from a project's workspace; null if the project or file doesn't exist. */
   readProjectFile(projectId: string, relPath: string): Promise<string | null>;
+  /** Runs a bash script in the project's workspace (created if missing), with optional stdin. */
+  projectShell(projectId: string, script: string, stdin?: Buffer): Promise<Buffer>;
   /** Deletes a project's workspace permanently. */
   destroyProject(projectId: string): Promise<void>;
   run(sandbox: Sandbox, spec: RunSpec, onEvent: (e: RunEvent) => void): RunHandle;

@@ -1,0 +1,22 @@
+{
+  "name": "@jev-route/cli",
+  "version": "0.1.0",
+  "description": "jev \u2014 a terminal agent that routes every request to the best coding agent with Jev",
+  "type": "module",
+  "bin": {
+    "jev": "./dist/jev.mjs"
+  },
+  "scripts": {
+    "build": "esbuild src/index.tsx --bundle --platform=node --target=node22 --format=esm --jsx=automatic --minify-syntax --define:process.env.NODE_ENV=\\\"production\\\" --outfile=dist/jev.mjs --banner:js=\"#!/usr/bin/env node\nimport { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);\" --alias:react-devtools-core=./src/stubs/devtools.js"
+  },
+  "dependencies": {
+    "ink": "^7.1.1",
+    "ink-spinner": "^5.0.0",
+    "ink-text-input": "^6.0.0",
+    "react": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "esbuild": "^0.24.0"
+  }
+}

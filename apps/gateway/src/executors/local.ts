@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { mkdir, readFile, rm } from "node:fs/promises";
@@ -6,6 +6,19 @@ import { join } from "node:path";
 import type { HarnessId } from "@jev-route/core";
 import { runHarness } from "@jev-route/agentd";
 import type { Executor, RunHandle, Sandbox } from "./types.ts";
+
+export function runShell(cmd: string, args: string[], cwd: string | undefined, stdin?: Buffer): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(cmd, args, { cwd, stdio: ["pipe", "pipe", "pipe"] });
+    const out: Buffer[] = [];
+    let err = "";
+    child.stdout.on("data", (c: Buffer) => out.push(c));
+    child.stderr.on("data", (c: Buffer) => (err = (err + c.toString("utf8")).slice(-2000)));
+    child.on("error", reject);
+    child.on("close", (code) => (code === 0 ? resolve(Buffer.concat(out)) : reject(new Error(err.trim() || `exit ${code}`))));
+    child.stdin.end(stdin ?? Buffer.alloc(0));
+  });
+}
 
 const BINS: Record<Exclude<HarnessId, "mock">, string> = {
   "claude-code": "claude",
@@ -57,6 +70,12 @@ export class LocalExecutor implements Executor {
 
   async readProjectFile(projectId: string, relPath: string): Promise<string | null> {
     return readFile(join(this.projectDir(projectId), relPath), "utf8").catch(() => null);
+  }
+
+  async projectShell(projectId: string, script: string, stdin?: Buffer): Promise<Buffer> {
+    const cwd = this.projectDir(projectId);
+    await mkdir(cwd, { recursive: true });
+    return runShell("bash", ["-c", script], cwd, stdin);
   }
 
   async destroyProject(projectId: string): Promise<void> {

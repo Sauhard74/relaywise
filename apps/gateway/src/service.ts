@@ -746,6 +746,36 @@ export class GatewayService {
     return text;
   }
 
+  /**
+   * Mirrors a local working tree (tar) into the project workspace: files missing from the
+   * upload are removed (the ledger and managed instruction files excepted) and the result is
+   * committed, so the next turn's commit contains only what the agent changed.
+   */
+  async syncProject(id: string, tar: Buffer) {
+    this.store.ensureProject(id);
+    if (!this.store.claimProject(id)) throw projectBusy(id);
+    try {
+      const out = await this.executor.projectShell(id, SYNC_SCRIPT, tar);
+      const [head = "", changed = "0"] = out.toString("utf8").trim().split(/\s+/);
+      return { id, object: "project.sync", head, files_changed: Number(changed) };
+    } catch (err) {
+      throw new ApiError(422, "invalid_request_error", "jevroute.sync_failed", `sync failed: ${(err as Error).message.slice(0, 300)}`);
+    } finally {
+      this.store.releaseProject(id);
+    }
+  }
+
+  /** A turn's changes as a binary-safe patch, without ledger or managed files. */
+  async projectDiff(id: string, commit: string): Promise<string> {
+    this.getProject(id);
+    if (!/^[0-9a-f]{4,40}$/.test(commit)) throw new ApiError(400, "invalid_request_error", "invalid_input", "commit must be a hex sha", "commit");
+    const out = await this.executor
+      .projectShell(id, `git show --binary --no-color --format= ${commit} -- . ${DIFF_EXCLUDES}`)
+      .catch(() => null);
+    if (out === null) throw new ApiError(404, "invalid_request_error", "jevroute.commit_not_found", `no commit ${commit} in project '${id}'`);
+    return out.toString("utf8");
+  }
+
   async deleteProject(id: string) {
     const p = this.getProject(id);
     if (p.busy) throw projectBusy(id);
@@ -779,6 +809,39 @@ export class GatewayService {
 }
 
 const PROJECT_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
+
+/** Paths that belong to jev-route, or are build/test artifacts, not the user's changes. */
+const DIFF_EXCLUDES = [
+  ".jev",
+  "AGENTS.md",
+  "CLAUDE.md",
+  ...["__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", "node_modules", ".venv", ".next", ".turbo"].map(
+    (d) => `(glob)**/${d}/**`,
+  ),
+  "(glob)**/*.pyc",
+  "(glob)**/.DS_Store",
+]
+  .map((p) => (p.startsWith("(glob)") ? `':(exclude,glob)${p.slice(6)}'` : `':(exclude)${p}'`))
+  .join(" ");
+
+const SYNC_SCRIPT = String.raw`set -euo pipefail
+export GIT_AUTHOR_NAME=jev-route GIT_AUTHOR_EMAIL=agent@jev-route.local GIT_COMMITTER_NAME=jev-route GIT_COMMITTER_EMAIL=agent@jev-route.local
+tmp=$(mktemp -d)
+lists=$(mktemp -d)
+trap 'rm -rf "$tmp" "$lists"' EXIT
+export LC_ALL=C
+tar --no-same-owner --warning=no-unknown-keyword -xf - -C "$tmp" 2>/dev/null || tar --no-same-owner -xf - -C "$tmp"
+[ -d .git ] || git init -q -b main
+(cd "$tmp" && find . \( -type f -o -type l \) | sed 's|^\./||' | sort) > "$lists/upload"
+git ls-files | sort > "$lists/tracked"
+comm -23 "$lists/tracked" "$lists/upload" | grep -vE '^(\.jev/|AGENTS\.md$|CLAUDE\.md$)' | while IFS= read -r f; do rm -f -- "$f"; done || true
+cp -a "$tmp"/. ./
+grep -qxF '.harness/' .gitignore 2>/dev/null || echo '.harness/' >> .gitignore
+git add -A
+changed=$(git diff --cached --name-only | grep -cvE '^(\.jev/|AGENTS\.md$|CLAUDE\.md$)' || true)
+git diff --cached --quiet || git commit -q -m "jev-route: sync from local"
+git rev-parse --short HEAD 2>/dev/null || echo none
+echo "$changed"`;
 
 function requestedProject(body: CreateBody, header: string | undefined): string | null {
   const raw = (body.metadata?.project_id as string | undefined) ?? header;

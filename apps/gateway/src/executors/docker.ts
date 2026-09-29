@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 import type { HarnessId, RunEvent } from "@jev-route/core";
+import { runShell } from "./local.ts";
 import { SandboxError, type Executor, type RunHandle, type RunStatus, type Sandbox } from "./types.ts";
 
 export interface DockerOptions {
@@ -152,6 +153,37 @@ export class DockerExecutor implements Executor {
       this.opts.image,
       `/w/${relPath}`,
     ]).catch(() => null);
+  }
+
+  /** A throwaway, network-less container on the project volume, as the agent user. */
+  async projectShell(projectId: string, script: string, stdin?: Buffer): Promise<Buffer> {
+    return runShell(
+      this.bin,
+      [
+        "run",
+        "--rm",
+        "-i",
+        "--network",
+        "none",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "-v",
+        `${projectVolume(projectId)}:${WORKDIR}`,
+        "-w",
+        WORKDIR,
+        "--entrypoint",
+        "bash",
+        this.opts.image,
+        "-c",
+        script,
+      ],
+      undefined,
+      stdin,
+    ).catch((err: Error) => {
+      throw new SandboxError(err.message);
+    });
   }
 
   async destroyProject(projectId: string): Promise<void> {

@@ -317,6 +317,33 @@ describe("projects: memory that outlives sessions", () => {
     expect((await res.json()).error.code).toBe("jevroute.project_mismatch");
   });
 
+  it("syncs a local tree in and hands back only the agent's changes as a patch", async () => {
+    const { execFileSync } = await import("node:child_process");
+    const { mkdtempSync, writeFileSync, rmSync } = await import("node:fs");
+    const local = mkdtempSync(join(tmpdir(), "local-"));
+    const tarOf = (files: string[]) =>
+      execFileSync("tar", ["-cf", "-", ...files], { cwd: local, env: { ...process.env, COPYFILE_DISABLE: "1" } });
+    writeFileSync(join(local, "a.txt"), "alpha\n");
+    writeFileSync(join(local, "b.txt"), "beta\n");
+    const sync = (files: string[]) =>
+      app.request("/v1/projects/synced/sync", { method: "POST", headers: { Authorization: auth.Authorization }, body: tarOf(files) });
+
+    const first = await (await sync(["a.txt", "b.txt"])).json();
+    expect(first).toMatchObject({ object: "project.sync", files_changed: 3 }); // a, b, .gitignore
+    rmSync(join(local, "b.txt"));
+    const second = await (await sync(["a.txt"])).json();
+    expect(second.files_changed).toBe(1); // b.txt deleted
+
+    const turn = await (await post("/v1/responses", { input: "add MOCK_WRITE c.txt", metadata: { project_id: "synced" } })).json();
+    const patch = await (await get(`/v1/projects/synced/diff?commit=${turn.metadata.checkpoint.commit}`)).text();
+    expect(patch).toContain("c.txt");
+    expect(patch).not.toContain(".jev/");
+    expect(patch).not.toContain("b.txt");
+    execFileSync("git", ["apply"], { cwd: local, input: patch });
+    expect(execFileSync("cat", ["c.txt"], { cwd: local, encoding: "utf8" })).toBe("written by mock-small\n");
+    expect((await get("/v1/projects/synced/diff?commit=zzz")).status).toBe(400);
+  });
+
   it("deletes a project and its memory", async () => {
     await post("/v1/responses", { input: "x", metadata: { project_id: "gone" } });
     expect((await app.request("/v1/projects/gone", { method: "DELETE", headers: auth })).status).toBe(200);

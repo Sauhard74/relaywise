@@ -138,6 +138,16 @@ export function createApp(service: GatewayService, apiKeys: string[]): Hono {
     return c.body(text, 200, { "Content-Type": "text/markdown; charset=utf-8" });
   });
   app.delete("/v1/projects/:id", async (c) => c.json(await service.deleteProject(c.req.param("id"))));
+  app.post("/v1/projects/:id/sync", async (c) => {
+    const tar = Buffer.from(await c.req.arrayBuffer());
+    if (tar.length > 200 * 1024 * 1024) throw new ApiError(413, "invalid_request_error", "jevroute.too_large", "workspace upload is over 200 MB");
+    return c.json(await service.syncProject(validProject(c.req.param("id")), tar));
+  });
+  app.get("/v1/projects/:id/diff", async (c) =>
+    c.body(await service.projectDiff(c.req.param("id"), c.req.query("commit") ?? ""), 200, {
+      "Content-Type": "text/x-diff; charset=utf-8",
+    }),
+  );
 
   return app;
 }
@@ -197,6 +207,13 @@ function errorResponse(c: Context, err: ApiError) {
     },
     err.status as 400,
   );
+}
+
+function validProject(id: string): string {
+  if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(id)) {
+    throw new ApiError(400, "invalid_request_error", "invalid_input", "invalid project id", "id");
+  }
+  return id;
 }
 
 function sha256(s: string): Buffer {
