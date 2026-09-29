@@ -1,10 +1,10 @@
 {
   "name": "relaywise",
   "version": "0.1.0",
-  "description": "relay \u2014 a terminal coding agent that sends every request to the right agent, model and effort (Claude Code, Codex, OpenCode, Hermes), in isolated sandboxes",
+  "description": "relay — a terminal coding agent that sends every request to the right agent, model and effort (Claude Code, Codex, OpenCode, Hermes), in isolated sandboxes",
   "type": "module",
   "bin": {
-    "relay": "./dist/relay.mjs"
+    "relay": "dist/relay.mjs"
   },
   "files": [
     "dist/relay.mjs",
