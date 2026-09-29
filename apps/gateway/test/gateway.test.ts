@@ -414,6 +414,6 @@ describe("routing endpoints, feedback and stats", () => {
   it("serves the dashboard", async () => {
     const res = await app.request("/dashboard");
     expect(res.status).toBe(200);
-    expect(await res.text()).toContain("jev-route");
+    expect(await res.text()).toContain("Where your tasks went");
   });
 });
