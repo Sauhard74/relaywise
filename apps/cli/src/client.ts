@@ -85,7 +85,7 @@ export class Gateway {
     try {
       res = await fetch(`${this.url}${path}`, { ...init, headers: this.headers(init.headers as Record<string, string>) });
     } catch (err) {
-      throw new ApiError(`cannot reach the gateway at ${this.url} (${(err as Error).cause ?? (err as Error).message})`, 0);
+      throw new ApiError(`cannot reach the relaywise gateway at ${this.url} — start it with \`relay up\``, 0);
     }
     if (!res.ok) {
       const body = (await res.json().catch(() => ({}))) as { error?: { message?: string; code?: string } };

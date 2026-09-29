@@ -15,6 +15,7 @@ const executor =
     ? new LocalExecutor(cfg.workspacesDir, cfg.enableMock)
     : new DockerExecutor({
         image: cfg.dockerImage,
+        instance: cfg.instance,
         network: cfg.dockerNetwork,
         cpus: cfg.containerCpus,
         memory: cfg.containerMemory,

@@ -10,6 +10,9 @@ RUN esbuild packages/agentd/src/cli.ts --bundle --platform=node --target=node22 
       --alias:@relaywise/core=./packages/core/src/index.ts --outfile=/out/agentd.mjs
 
 FROM node:22-bookworm-slim
+LABEL org.opencontainers.image.source="https://github.com/Sauhard74/relaywise" \
+      org.opencontainers.image.description="relaywise agent sandbox: Claude Code, Codex, OpenCode and Hermes with agentd" \
+      org.opencontainers.image.licenses="Apache-2.0"
 
 ARG CLAUDE_CODE_VERSION=2.1.283
 ARG CODEX_VERSION=0.154.0

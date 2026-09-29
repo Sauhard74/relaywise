@@ -42,12 +42,23 @@ Picking right per task is the product; nobody automates it.
 
 ## Quickstart
 
-**Docker (recommended — real isolation):**
+Needs Docker and Node 22+.
+
+```bash
+npm install -g relaywise
+relay up                      # asks for your keys once, pulls the images, starts the gateway
+cd ~/code/your-repo && relay
+```
+
+`relay up` keeps its config in `~/.relaywise`, pins images to the CLI's version, and prints which
+agents are ready; `relay down` stops it and `relay logs` follows it. The dashboard is at
+http://127.0.0.1:8420/dashboard.
+
+**From source (contributors):**
 
 ```bash
 cp .env.example .env          # add TYPESAFE_API_KEY and the provider keys you have
 docker compose up --build     # builds the agent runtime image and the gateway
-open http://127.0.0.1:8420/dashboard
 ```
 
 **Local dev (no containers; harnesses run as host processes and reuse your CLI logins):**

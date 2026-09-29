@@ -1,0 +1,103 @@
+# Push a tag like v0.2.0 (matching apps/cli/package.json) to publish everything:
+# multi-arch images to GHCR, the CLI to npm (trusted publishing), and a GitHub release.
+name: release
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+env:
+  REGISTRY: ghcr.io/sauhard74
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg=$(node -p "require('./apps/cli/package.json').version")
+          cli=$(grep -oE 'const VERSION = "[^"]+"' apps/cli/src/index.tsx | cut -d'"' -f2)
+          if [ "$tag" != "$pkg" ] || [ "$tag" != "$cli" ]; then
+            echo "::error::tag $tag, package.json $pkg and index.tsx VERSION $cli must match"; exit 1
+          fi
+          echo "version=$tag" >> "$GITHUB_OUTPUT"
+
+  image:
+    needs: check
+    strategy:
+      matrix:
+        image: [gateway, runtime]
+        arch: [amd64, arm64]
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.image == 'gateway' && 'docker/gateway/Dockerfile' || 'docker/agent-runtime/Dockerfile' }}
+          platforms: linux/${{ matrix.arch }}
+          push: true
+          provenance: false
+          tags: ${{ env.REGISTRY }}/relaywise-${{ matrix.image }}:${{ needs.check.outputs.version }}-${{ matrix.arch }}
+          cache-from: type=gha,scope=${{ matrix.image }}-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}-${{ matrix.arch }}
+
+  manifest:
+    needs: [check, image]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image: [gateway, runtime]
+    steps:
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Combine arches under :version and :latest
+        run: |
+          base="$REGISTRY/relaywise-${{ matrix.image }}"
+          v="${{ needs.check.outputs.version }}"
+          docker buildx imagetools create -t "$base:$v" -t "$base:latest" "$base:$v-amd64" "$base:$v-arm64"
+
+  npm:
+    needs: [check, manifest]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - run: npm install -g npm@latest   # trusted publishing needs npm >= 11.5
+      - run: corepack enable && pnpm install --frozen-lockfile && pnpm build:cli
+      - working-directory: apps/cli
+        run: npm publish --access public --provenance --ignore-scripts
+
+  release:
+    needs: [check, npm]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v="${{ needs.check.outputs.version }}"
+          if gh release view "v$v" >/dev/null 2>&1; then exit 0; fi
+          gh release create "v$v" --title "relaywise v$v" --generate-notes \
+            --notes "Install: \`npm install -g relaywise@$v && relay up\`  ·  Images: \`ghcr.io/sauhard74/relaywise-gateway:$v\`, \`ghcr.io/sauhard74/relaywise-runtime:$v\`"

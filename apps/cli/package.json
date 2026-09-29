@@ -1,6 +1,6 @@
 {
   "name": "relaywise",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "relay — a terminal coding agent that sends every request to the right agent, model and effort (Claude Code, Codex, OpenCode, Hermes), in isolated sandboxes",
   "type": "module",
   "bin": {

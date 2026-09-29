@@ -66,7 +66,7 @@ export function App({ session, version }: { session: Session; version: string })
       })
       .catch((err: Error) => {
         push({ kind: "banner", agents: [], engine: "offline" });
-        push({ kind: "error", message: `${err.message}. Start it with \`docker compose up -d\` or set RELAYWISE_URL.` });
+        push({ kind: "error", message: `${err.message}. Start it with \`relay up\`, or set RELAYWISE_URL.` });
       });
   }, [push, session]);
 

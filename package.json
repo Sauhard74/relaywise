@@ -18,7 +18,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "eval:router": "tsx packages/router/eval/run.ts",
-    "build:cli": "pnpm --filter @relaywise/cli build",
+    "build:cli": "pnpm --filter relaywise --fail-if-no-match build",
     "relay": "node apps/cli/dist/relay.mjs"
   },
   "devDependencies": {

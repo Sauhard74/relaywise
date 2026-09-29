@@ -20,6 +20,8 @@ export interface Config {
   apiKeys: string[];
   executor: "docker" | "local";
   dockerImage: string;
+  /** Labels this gateway's session containers, so several gateways can share one Docker. */
+  instance: string;
   dockerNetwork: string;
   containerCpus: string;
   containerMemory: string;
@@ -56,6 +58,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     apiKeys: (env.RELAYWISE_API_KEYS ?? "").split(",").map((s) => s.trim()).filter(Boolean),
     executor: env.RELAYWISE_EXECUTOR === "local" ? "local" : "docker",
     dockerImage: env.RELAYWISE_IMAGE ?? "relaywise/agent-runtime:latest",
+    instance: env.RELAYWISE_INSTANCE ?? "relaywise",
     dockerNetwork: env.RELAYWISE_CONTAINER_NETWORK ?? "bridge",
     containerCpus: env.RELAYWISE_CONTAINER_CPUS ?? "2",
     containerMemory: env.RELAYWISE_CONTAINER_MEMORY ?? "4g",

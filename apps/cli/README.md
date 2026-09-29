@@ -16,20 +16,15 @@ unstaged diff you review.
 
 ## Install
 
-`relay` talks to a relaywise gateway, which runs the agents in Docker. Start one first:
-
-```bash
-git clone https://github.com/Sauhard74/relaywise && cd relaywise
-cp .env.example .env        # add TYPESAFE_API_KEY and the provider keys you have
-docker compose up -d --build
-```
-
-Then install the CLI (Node 22+):
+Needs Docker and Node 22+.
 
 ```bash
 npm install -g relaywise
+relay up                      # asks for your keys once, pulls the images, starts the gateway
 cd ~/code/your-repo && relay
 ```
+
+`relay down` stops the gateway, `relay logs` follows it, `relay up --reconfigure` changes keys.
 
 ## Use
 

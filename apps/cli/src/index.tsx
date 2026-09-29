@@ -3,15 +3,18 @@ import { parseArgs } from "node:util";
 import { Gateway, type Settings } from "./client.ts";
 import { printMode } from "./print.ts";
 import { Session } from "./session.ts";
+import { down, logs, up } from "./stack.ts";
 import { App } from "./ui/App.tsx";
 import { projectIdFor } from "./workspace.ts";
 
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 
 const USAGE = `relay — a terminal coding agent (relaywise); every request goes to the right agent,
         model and effort, chosen with TypeSafe's Jev
 
 Usage
+  relay up                start the relaywise gateway with Docker (asks for keys the first time)
+  relay down | logs       stop it, or follow its logs
   relay                   interactive session in the current directory
   relay -p "<task>"       run one task and print the result (exit 1 on failure)
   relay memory [turn]     print this project's ledger (or one turn in full)
@@ -26,6 +29,8 @@ Options
   --project <id>          project id (default: derived from this directory)
   --no-sync               don't mirror local files or apply changes back
   --json                  with -p: print the final response as JSON
+  --port <n>              with up: local port (default 8420)
+  --reconfigure           with up: ask for keys again
   --url <url>             gateway (default $RELAYWISE_URL or http://127.0.0.1:8420)
   --key <key>             gateway API key (default $RELAYWISE_KEY)
   -v, --version · -h, --help
@@ -46,6 +51,8 @@ async function main(): Promise<number> {
       "no-sync": { type: "boolean" },
       url: { type: "string" },
       key: { type: "string" },
+      port: { type: "string", default: "8420" },
+      reconfigure: { type: "boolean" },
       help: { type: "boolean", short: "h" },
       version: { type: "boolean", short: "v" },
     },
@@ -74,6 +81,9 @@ async function main(): Promise<number> {
   const session = new Session(gateway, cwd, values.project ?? projectIdFor(cwd), settings, !values["no-sync"]);
 
   const [sub, arg] = positionals;
+  if (sub === "up") return up({ version: VERSION, port: Number(values.port), reconfigure: values.reconfigure });
+  if (sub === "down") return down();
+  if (sub === "logs") return logs();
   if (sub === "memory") {
     process.stdout.write(`${await gateway.memory(session.project, arg ? Number(arg) : undefined)}\n`);
     return 0;

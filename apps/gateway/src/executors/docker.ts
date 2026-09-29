@@ -6,6 +6,7 @@ import { SandboxError, type Executor, type RunHandle, type RunStatus, type Sandb
 
 export interface DockerOptions {
   image: string;
+  instance?: string;
   network: string;
   cpus: string;
   memory: string;
@@ -56,6 +57,8 @@ export class DockerExecutor implements Executor {
         name,
         "--label",
         `relaywise.session=${sessionId}`,
+        "--label",
+        `relaywise.instance=${this.opts.instance ?? "relaywise"}`,
         "--cpus",
         this.opts.cpus,
         "--memory",
